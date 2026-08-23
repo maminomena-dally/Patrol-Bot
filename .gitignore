@@ -1,0 +1,22 @@
+# Environnement virtuel
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs et résultats générés (ne pas versionner, régénérés à chaque essai)
+logs/*.csv
+results/*.csv
+results/*.jsonl
+results/*.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
