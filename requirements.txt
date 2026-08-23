@@ -1,0 +1,12 @@
+# Le module Système/Cinématique n'utilise que la bibliothèque standard
+# Python. L'interface graphique 2D (gui/) nécessite matplotlib et
+# Tkinter (Tkinter est inclus avec Python — voir INSTALLATION.md si
+# absent sous Linux).
+
+matplotlib>=3.8
+
+# Dépendances ci-dessous utiles pour les PROCHAINS modules de l'équipe
+# (perception, planification...). Décommentez au besoin.
+
+# numpy>=1.26          # calcul matriciel (EKF, grilles d'occupation...)
+# pytest>=8.0            # exécution des tests (alternative à unittest)
