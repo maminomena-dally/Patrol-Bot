@@ -54,3 +54,21 @@ LOCALIZATION_UNCERTAINTY_MAX = 0.5  # m — au-delà : arrêt sûr (à affiner p
 LOG_DIR = "logs"
 LOG_FILE = "robot_state_log.csv"
 RESULTS_DIR = "results"
+
+##### ==== planification/Commande : rôle 3 ======
+# ----------------------------------------------------------------------
+# Planification (Rôle 3)
+# ----------------------------------------------------------------------
+GRID_RESOLUTION = 0.1        # m par cellule
+ASTAR_8_CONNECTED = True     # 8 directions (diagonales)
+RRT_MAX_ITER = 2000
+RRT_STEP_SIZE = 0.3          # m
+RRT_GOAL_BIAS = 0.10
+RRT_GOAL_TOLERANCE = 0.3     # m
+
+# ----------------------------------------------------------------------
+# Contrôle (rôle 3)
+# ----------------------------------------------------------------------
+LOOKAHEAD_DISTANCE = 0.5     # m
+V_CRUISE = 0.3               # m/s
+GOAL_TOLERANCE = 0.15        # m

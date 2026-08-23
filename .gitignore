@@ -14,6 +14,9 @@ results/*.csv
 results/*.jsonl
 results/*.json
 
+#Rôle 3 workkflow --
+ROLE3_WORKFLOW.md
+
 # IDE
 .vscode/
 .idea/
