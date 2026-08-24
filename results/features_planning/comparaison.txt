@@ -1,0 +1,19 @@
+=================================================================
+  COMPARAISON A* vs RRT — Resultats
+=================================================================
+
+Metrique                                         A*        RRT
+------------------------------------------------------------
+  PATROUILLE                            
+  Succes                                          OUI        OUI
+  Waypoints atteints                                      4          4
+  Temps mission (s)                                   189.3      200.0
+  Longueur chemin (m)                                  50.13      53.33
+  Planif moyenne (ms/wp)                               63.1       42.1
+  Dist min obstacles (m)                              0.000      0.000
+  REPLANIFICATION                       
+  Succes replan                                        OUI        OUI
+  Temps replan (ms)                                    238.6      259.9
+  Dist au but final (m)                              0.0993     0.0995
+  Temps total (s)                                        72.8       76.5
+=================================================================
