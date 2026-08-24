@@ -1,41 +1,55 @@
-"""
-localization/localization.py — À IMPLÉMENTER par le binôme Localisation.
+import math
 
-Rôle attendu (sections 17, 18 du support de cours et cahier des charges) :
-    Estimer la pose du robot (x_hat, y_hat, theta_hat) à partir des
-    mesures des capteurs simulés (sensors/odometry.py, sensors/landmarks.py),
-    SANS jamais lire robot.get_true_pose() en dehors des tests de
-    validation. Boucle attendue : prédire (modèle) -> mesurer (capteurs)
-    -> comparer -> corriger l'état (slide 17 du cours).
+import config
+from robot.kinematics import Pose, normalize_angle
 
-    Méthodes suggérées par le cours (slide 18) : EKF, AMCL, fusion
-    odométrie + balises. Un simple recalage par balises suffit pour
-    une première version.
 
-Interface à respecter :
-    - Ne jamais modifier robot.pose directement : la pose estimée doit
-      être stockée séparément (par ex. self.estimated_pose), pour bien
-      distinguer "vérité terrain" (robot.pose) et "estimation" (ce module).
-    - Exposer une incertitude ou une covariance si possible, pour
-      permettre à safety/safety_manager.py de déclencher un arrêt sûr en
-      cas de localisation trop incertaine (voir config.LOCALIZATION_UNCERTAINTY_MAX).
+class Localizer:
+    def __init__(self, initial_pose, wheel_base=config.WHEEL_BASE,
+                 process_noise=config.LOCALIZATION_PROCESS_NOISE,
+                 measurement_noise=config.LOCALIZATION_MEASUREMENT_NOISE):
+        x, y, theta = initial_pose
+        self.estimated_pose = Pose(x, y, theta)
+        self.wheel_base = wheel_base
+        self.process_noise = process_noise
+        self.measurement_noise = measurement_noise
+        self.uncertainty = 0.0  # m — grandit avec predict(), diminue avec correct()
 
-Exemple de squelette :
+    def predict(self, d_left, d_right):
+        d_center = (d_left + d_right) / 2.0
+        d_theta = (d_right - d_left) / self.wheel_base
 
-    from robot.kinematics import Pose, integrate_euler
+        mid_theta = self.estimated_pose.theta + d_theta / 2.0
+        new_x = self.estimated_pose.x + d_center * math.cos(mid_theta)
+        new_y = self.estimated_pose.y + d_center * math.sin(mid_theta)
+        new_theta = normalize_angle(self.estimated_pose.theta + d_theta)
 
-    class Localizer:
-        def __init__(self, initial_pose):
-            self.estimated_pose = initial_pose
-            self.uncertainty = 0.0
+        self.estimated_pose = Pose(new_x, new_y, new_theta)
+        self.uncertainty += self.process_noise * (abs(d_center) + abs(d_theta))
 
-        def predict(self, v, omega, dt):
-            # TODO: prédire la nouvelle pose estimée avec le modèle cinématique
-            raise NotImplementedError
+        return self.estimated_pose
 
-        def correct(self, landmark_measurements):
-            # TODO: recaler self.estimated_pose à partir des balises détectées
-            raise NotImplementedError
-"""
+    def correct(self, landmark_measurements):
+        if not landmark_measurements:
+            return self.estimated_pose
 
-# TODO(binôme localisation) : implémenter la classe Localizer.
+        x_estimates = []
+        y_estimates = []
+        for m in landmark_measurements:
+            bearing_world = self.estimated_pose.theta + m["angle"]
+            x_estimates.append(m["x"] - m["distance"] * math.cos(bearing_world))
+            y_estimates.append(m["y"] - m["distance"] * math.sin(bearing_world))
+
+        x_from_landmarks = sum(x_estimates) / len(x_estimates)
+        y_from_landmarks = sum(y_estimates) / len(y_estimates)
+
+        weight = self.uncertainty / (self.uncertainty + self.measurement_noise)
+        weight = max(0.0, min(1.0, weight))
+
+        new_x = (1 - weight) * self.estimated_pose.x + weight * x_from_landmarks
+        new_y = (1 - weight) * self.estimated_pose.y + weight * y_from_landmarks
+
+        self.estimated_pose = Pose(new_x, new_y, self.estimated_pose.theta)
+        self.uncertainty = (1 - weight) * self.uncertainty
+
+        return self.estimated_pose

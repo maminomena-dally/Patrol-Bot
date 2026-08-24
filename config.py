@@ -49,6 +49,16 @@ OBSTACLE_SAFE_DISTANCE = 0.4   # m — distance en dessous de laquelle on ralent
 LOCALIZATION_UNCERTAINTY_MAX = 0.5  # m — au-delà : arrêt sûr (à affiner par le binôme localisation)
 
 # ----------------------------------------------------------------------
+# Perception / Localisation (Rôle 2 — Kojy)
+# ----------------------------------------------------------------------
+ODOMETRY_NOISE_STD = 0.01              # m — écart-type du bruit gaussien ajouté à chaque delta de roue
+LANDMARK_DETECTION_RADIUS = 2.0        # m — distance max à laquelle une balise est détectée
+LANDMARK_NOISE_STD_DISTANCE = 0.05     # m — écart-type du bruit sur la distance mesurée à une balise
+LANDMARK_NOISE_STD_ANGLE = 0.03        # rad — écart-type du bruit sur l'angle mesuré vers une balise
+LOCALIZATION_PROCESS_NOISE = 0.05      # facteur de croissance de l'incertitude par mètre/radian parcouru (predict)
+LOCALIZATION_MEASUREMENT_NOISE = 0.1   # m — confiance accordée à une mesure de balise (correct)
+
+# ----------------------------------------------------------------------
 # Journalisation (section 18, 19)
 # ----------------------------------------------------------------------
 LOG_DIR = "logs"
