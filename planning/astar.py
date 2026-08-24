@@ -11,6 +11,7 @@ Références :
 Interface :
     planner = AStarPlanner(grid, resolution, robot_radius)
     path = planner.plan(start=(x, y), goal=(x, y))
+
     # path = [(x1,y1), (x2,y2), ...] en mètres, ou [] si impossible
     # planner.last_plan_time_ms = temps de calcul en millisecondes
 """
