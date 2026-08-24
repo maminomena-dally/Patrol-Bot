@@ -1,30 +1,44 @@
-"""
-sensors/landmarks.py — À IMPLÉMENTER par le binôme Localisation.
+import math
+import random
 
-Rôle attendu (sections 5, 18 du cahier des charges) :
-    Simuler des balises de position connue dans la carte, et détecter
-    quand le robot en est suffisamment proche pour "recaler" sa position
-    estimée (utile pour limiter la dérive de l'odométrie).
+import config
+from robot.kinematics import normalize_angle
 
-Interface à respecter :
-    - Utiliser robot.get_true_pose() pour simuler la détection (avec bruit),
-      exactement comme un vrai capteur de balise le ferait.
-    - Fournir au module localization/localization.py une mesure du type
-      (landmark_id, distance_mesurée, angle_mesuré) ou (x_balise, y_balise)
-      selon la méthode de fusion choisie (EKF, recalage direct, etc.).
 
-Exemple de squelette :
+class LandmarkDetector:
+    def __init__(self, robot, landmarks,
+                 detection_radius=config.LANDMARK_DETECTION_RADIUS,
+                 noise_std_distance=config.LANDMARK_NOISE_STD_DISTANCE,
+                 noise_std_angle=config.LANDMARK_NOISE_STD_ANGLE):
+        self.robot = robot
+        self.landmarks = landmarks  # ex: [{"id": 0, "x": 2.0, "y": 3.0}, ...]
+        self.detection_radius = detection_radius
+        self.noise_std_distance = noise_std_distance
+        self.noise_std_angle = noise_std_angle
 
-    class LandmarkDetector:
-        def __init__(self, robot, landmarks, detection_radius=1.0):
-            self.robot = robot
-            self.landmarks = landmarks  # ex: [{"id": 0, "x": 2.0, "y": 3.0}, ...]
-            self.detection_radius = detection_radius
+    def detect(self):
+        x, y, theta = self.robot.get_true_pose()
+        detections = []
 
-        def detect(self):
-            x, y, theta = self.robot.get_true_pose()
-            # TODO: retourner la liste des balises visibles avec mesure bruitée
-            raise NotImplementedError
-"""
+        for landmark in self.landmarks:
+            dx = landmark["x"] - x
+            dy = landmark["y"] - y
+            true_distance = math.hypot(dx, dy)
 
-# TODO(binôme localisation) : implémenter la classe LandmarkDetector.
+            if true_distance > self.detection_radius:
+                continue
+
+            true_angle = normalize_angle(math.atan2(dy, dx) - theta)
+
+            measured_distance = max(0.0, true_distance + random.gauss(0.0, self.noise_std_distance))
+            measured_angle = normalize_angle(true_angle + random.gauss(0.0, self.noise_std_angle))
+
+            detections.append({
+                "id": landmark["id"],
+                "x": landmark["x"],
+                "y": landmark["y"],
+                "distance": measured_distance,
+                "angle": measured_angle,
+            })
+
+        return detections
