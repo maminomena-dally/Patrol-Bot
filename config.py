@@ -48,7 +48,9 @@ CAMERA_SURV_FOV_DEG = 120    # champ de vision caméra de surveillance, en degr�
 OBSTACLE_SAFE_DISTANCE = 0.4   # m — distance en dessous de laquelle on ralentit/évite
 LOCALIZATION_UNCERTAINTY_MAX = 0.5  # m — au-delà : arrêt sûr (à affiner par le binôme localisation)
 
-# perception / localisation
+# ----------------------------------------------------------------------
+# Perception / Localisation (Rôle 2 — Kojy)
+# ----------------------------------------------------------------------
 ODOMETRY_NOISE_STD = 0.01              # m — écart-type du bruit gaussien ajouté à chaque delta de roue
 LANDMARK_DETECTION_RADIUS = 2.0        # m — distance max à laquelle une balise est détectée
 LANDMARK_NOISE_STD_DISTANCE = 0.05     # m — écart-type du bruit sur la distance mesurée à une balise
@@ -62,3 +64,28 @@ LOCALIZATION_MEASUREMENT_NOISE = 0.1   # m — confiance accordée à une mesure
 LOG_DIR = "logs"
 LOG_FILE = "robot_state_log.csv"
 RESULTS_DIR = "results"
+
+# ----------------------------------------------------------------------
+# Planification (Rôle 3 — Koja)
+# Référence : Cadrage, section 4 (environnement 20m×15m, résolution 0.1m)
+# ----------------------------------------------------------------------
+WORLD_WIDTH = 20.0             # m — largeur de la carte
+WORLD_HEIGHT = 15.0            # m — hauteur de la carte
+GRID_RESOLUTION = 0.1         # m par cellule → 200×150 cellules
+ASTAR_8_CONNECTED = True      # 8 directions (diagonales avec coût √2)
+
+# ----------------------------------------------------------------------
+# RRT (Rôle 3 — Koja)
+# ----------------------------------------------------------------------
+RRT_MAX_ITER = 2000           # itérations max
+RRT_STEP_SIZE = 0.3           # m — pas d'extension
+RRT_GOAL_BIAS = 0.10          # probabilité de tirer vers le but
+RRT_GOAL_TOLERANCE = 0.3      # m — distance au but pour considérer atteint
+
+# ----------------------------------------------------------------------
+# Contrôle — Pure Pursuit (Rôle 3 — Koja)
+# Référence : Cadrage, critère < 10 cm au point cible
+# ----------------------------------------------------------------------
+LOOKAHEAD_DISTANCE = 0.5      # m — distance de visée
+V_CRUISE = 0.3                # m/s — vitesse de croisière
+GOAL_TOLERANCE = 0.10         # m — ≤ 10 cm comme exigé par le cadrage
