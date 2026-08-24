@@ -26,6 +26,7 @@ import numpy as np
 
 import config
 from planning.astar import AStarPlanner, create_test_grid
+from planning.rrt import RRTPlanner, grid_to_is_free
 
 
 class TestAStarBase(unittest.TestCase):
@@ -271,3 +272,158 @@ class TestCreateTestGrid(unittest.TestCase):
             resolution=config.GRID_RESOLUTION,
         )
         self.assertEqual(grid.shape, (150, 200))
+
+
+class TestRRTBase(unittest.TestCase):
+    """Tests fondamentaux du RRT."""
+
+    def _make_planner(self, obstacles=None, seed=42):
+        """Créer un RRTPlanner sur une grille de test."""
+        grid = create_test_grid(10.0, 10.0, resolution=0.1, obstacles=obstacles)
+        is_free = grid_to_is_free(grid, 0.1, 0.18)
+        return RRTPlanner(
+            is_free=is_free,
+            bounds=(0, 0, 10, 10),
+            robot_radius=0.18,
+            step_size=0.3,
+            max_iter=2000,
+            goal_bias=0.10,
+            goal_tolerance=0.3,
+            seed=seed,
+        )
+
+    def test_chemin_en_espace_libre(self):
+        """Un chemin doit être trouvé en espace vide."""
+        planner = self._make_planner()
+        path = planner.plan(start=(1.0, 1.0), goal=(8.0, 8.0))
+
+        self.assertGreater(len(path), 0, "Un chemin doit être trouvé")
+        self.assertAlmostEqual(path[0][0], 1.0, places=1)
+        self.assertAlmostEqual(path[-1][0], 8.0, places=1)
+        self.assertAlmostEqual(path[-1][1], 8.0, places=1)
+
+    def test_chemin_contourne_obstacle(self):
+        """Le robot doit contourner un obstacle."""
+        obstacles = [{"type": "rect", "x": 3.0, "y": 0.0, "w": 0.3, "h": 6.0}]
+        planner = self._make_planner(obstacles=obstacles)
+        path = planner.plan(start=(1.0, 3.0), goal=(8.0, 3.0))
+
+        self.assertGreater(len(path), 0, "Un chemin doit contourner l'obstacle")
+
+    def test_pas_de_chemin_si_start_bloque(self):
+        """Aucun chemin si le start est dans un obstacle."""
+        # Mur couvrant tout le coin bas-gauche
+        obstacles = [{"type": "rect", "x": 0.0, "y": 0.0, "w": 3.0, "h": 3.0}]
+        planner = self._make_planner(obstacles=obstacles)
+        path = planner.plan(start=(1.0, 1.0), goal=(8.0, 8.0))
+
+        self.assertEqual(len(path), 0, "Aucun chemin depuis un obstacle")
+
+    def test_start_equals_goal(self):
+        """Si start == goal, le chemin est un seul point."""
+        planner = self._make_planner()
+        path = planner.plan(start=(5.0, 5.0), goal=(5.0, 5.0))
+        self.assertEqual(len(path), 1)
+
+    def test_temps_calcul_mesure(self):
+        """Le temps de calcul doit être enregistré."""
+        planner = self._make_planner()
+        planner.plan(start=(1.0, 1.0), goal=(8.0, 8.0))
+
+        self.assertGreater(planner.last_plan_time_ms, 0.0)
+        self.assertLess(planner.last_plan_time_ms, 5000.0)
+
+    def test_chemin_lisse(self):
+        """Le chemin lissé doit avoir peu de points en ligne droite."""
+        planner = self._make_planner()
+        path = planner.plan(start=(1.0, 1.0), goal=(9.0, 1.0))
+        self.assertGreater(len(path), 0)
+        # Le lissage doit réduire les points
+        self.assertLessEqual(len(path), 10)
+
+
+class TestRRTPerformance(unittest.TestCase):
+    """Tests de performance du RRT."""
+
+    def test_replanification_rapide(self):
+        """Replanification répétée doit être rapide (< 500 ms en moyenne)."""
+        obstacles = [
+            {"type": "rect", "x": 8.0, "y": 0.0, "w": 0.3, "h": 10.0},
+            {"type": "rect", "x": 4.0, "y": 5.0, "w": 5.0, "h": 0.3},
+        ]
+        grid = create_test_grid(
+            width_m=config.WORLD_WIDTH,
+            height_m=config.WORLD_HEIGHT,
+            resolution=config.GRID_RESOLUTION,
+            obstacles=obstacles,
+        )
+        is_free = grid_to_is_free(
+            grid, config.GRID_RESOLUTION, config.ROBOT_RADIUS
+        )
+        planner = RRTPlanner(
+            is_free=is_free,
+            bounds=(0, 0, config.WORLD_WIDTH, config.WORLD_HEIGHT),
+            robot_radius=config.ROBOT_RADIUS,
+            step_size=config.RRT_STEP_SIZE,
+            max_iter=config.RRT_MAX_ITER,
+            goal_bias=config.RRT_GOAL_BIAS,
+            goal_tolerance=config.RRT_GOAL_TOLERANCE,
+            seed=42,
+        )
+
+        times = []
+        for i in range(10):
+            goal = (15.0 + (i % 3), 3.0 + (i % 4))
+            path = planner.plan(start=(1.0, 1.0), goal=goal)
+            times.append(planner.last_plan_time_ms)
+
+        avg_time = sum(times) / len(times)
+        self.assertLess(avg_time, 500.0,
+                         f"Replanification RRT trop lente : {avg_time:.1f} ms")
+
+
+class TestAstarVsRRT(unittest.TestCase):
+    """Comparaison directe A* vs RRT (pour le rapport, section 5)."""
+
+    def test_deux_algorithmes_trouvent_chemin(self):
+        """Les deux algorithmes doivent trouver un chemin sur la même carte."""
+        obstacles = [
+            {"type": "rect", "x": 5.0, "y": 0.0, "w": 0.3, "h": 7.0},
+        ]
+        grid = create_test_grid(10.0, 10.0, resolution=0.1, obstacles=obstacles)
+
+        # A*
+        astar = AStarPlanner(grid, resolution=0.1, robot_radius=0.18)
+        path_astar = astar.plan(start=(1.0, 3.0), goal=(8.0, 3.0))
+
+        # RRT
+        is_free = grid_to_is_free(grid, 0.1, 0.18)
+        rrt = RRTPlanner(is_free, bounds=(0, 0, 10, 10), seed=42)
+        path_rrt = rrt.plan(start=(1.0, 3.0), goal=(8.0, 3.0))
+
+        self.assertGreater(len(path_astar), 0, "A* doit trouver un chemin")
+        self.assertGreater(len(path_rrt), 0, "RRT doit trouver un chemin")
+
+    def test_astar_plus_court_que_rrt(self):
+        """A* doit produire un chemin plus court (optimal) que RRT."""
+        grid = create_test_grid(10.0, 10.0, resolution=0.1)
+
+        astar = AStarPlanner(grid, resolution=0.1, robot_radius=0.18)
+        path_astar = astar.plan(start=(1.0, 1.0), goal=(9.0, 9.0))
+
+        is_free = grid_to_is_free(grid, 0.1, 0.18)
+        rrt = RRTPlanner(is_free, bounds=(0, 0, 10, 10), seed=42)
+        path_rrt = rrt.plan(start=(1.0, 1.0), goal=(9.0, 9.0))
+
+        def path_length(p):
+            return sum(
+                math.sqrt((p[i][0]-p[i-1][0])**2 + (p[i][1]-p[i-1][1])**2)
+                for i in range(1, len(p))
+            )
+
+        len_astar = path_length(path_astar)
+        len_rrt = path_length(path_rrt)
+
+        # A* doit être au moins aussi bon (optimalité garantie)
+        self.assertLessEqual(len_astar, len_rrt * 1.1,
+            f"A* ({len_astar:.2f}m) devrait etre <= RRT ({len_rrt:.2f}m)")
