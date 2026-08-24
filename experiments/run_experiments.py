@@ -475,7 +475,8 @@ def scenario_patrouille(planner_name="astar", verbose=False,
 # ======================================================================
 
 def scenario_replanification(planner_name="astar", verbose=False,
-                             plot_path=None, csv_path=None):
+                             plot_path=None, csv_path=None,
+                             unexpected_obstacle=None, obstacle_time=8.0):
     """Obstacle imprevu pendant le suivi : le robot replanifie.
 
     1. Planifie un chemin direct.
@@ -488,6 +489,12 @@ def scenario_replanification(planner_name="astar", verbose=False,
         verbose: afficher les details
         plot_path: chemin PNG pour la trajectoire (None = pas de graphique)
         csv_path: chemin CSV pour le log (None = pas de CSV)
+        unexpected_obstacle: dict {"type","x","y","w","h"} decrivant
+            l'obstacle imprevu. None = obstacle par defaut (comportement
+            original, inchange).
+        obstacle_time: instant d'apparition de l'obstacle (s). Ajoute par
+            Role 5 (Tino) pour permettre une campagne d'essais avec
+            position/instant variables (cahier des charges, section 2).
 
     Returns:
         dict avec metriques de replanification
@@ -497,14 +504,14 @@ def scenario_replanification(planner_name="astar", verbose=False,
         {"type": "rect", "x": 5.0, "y": 0.0, "w": 0.3, "h": 5.0},
     ]
 
-    # Obstacle imprevu : mur qui bloque le passage (gap en haut)
-    unexpected_obstacle = {
-        "type": "rect", "x": 10.0, "y": 1.0, "w": 0.4, "h": 12.0
-    }
+    # Obstacle imprevu : mur qui bloque le passage (gap en haut, par defaut)
+    if unexpected_obstacle is None:
+        unexpected_obstacle = {
+            "type": "rect", "x": 10.0, "y": 1.0, "w": 0.4, "h": 12.0
+        }
 
     start = (2.0, 7.5)
     goal = (18.0, 7.5)
-    obstacle_time = 8.0  # l'obstacle apparait apres 8s
 
     # Grille et planificateur initiaux
     grid = create_test_grid(
@@ -536,6 +543,7 @@ def scenario_replanification(planner_name="astar", verbose=False,
         "total_time": 0.0,
         "goal_dist": float("inf"),
         "obstacle_appeared": False,
+        "path_found_after_replan": True,  # pas de replan tente -> pas de probleme
     }
 
     if not path:
@@ -590,6 +598,9 @@ def scenario_replanification(planner_name="astar", verbose=False,
 
     metrics["replan_time_ms"] = round(replan_elapsed, 2)
     metrics["replan_count"] = 1
+    # Champ ajoute par Role 5 (Tino) : distingue explicitement "aucun chemin
+    # trouve" d'un simple timeout de suivi, pour brancher le SafetyManager.
+    metrics["path_found_after_replan"] = bool(new_path)
 
     if not new_path:
         if verbose:

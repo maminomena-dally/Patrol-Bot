@@ -1,0 +1,23 @@
+CAMPAGNE D'ESSAIS -- Role 5 (Tino), Experimentation/Surete
+=================================================================
+
+--- ASTAR ---
+  nb_essais                             : 12
+  taux_succes                           : 0.917
+  temps_replanification_moy_ms          : 130.73
+  temps_replanification_ecart_type_ms   : 25.07
+  goal_dist_moy_m                       : 1.2242
+  nb_arrets_surs_attendus               : 1
+  nb_arrets_surs_confirmes              : 1
+
+--- RRT ---
+  nb_essais                             : 12
+  taux_succes                           : 0.917
+  temps_replanification_moy_ms          : 155.43
+  temps_replanification_ecart_type_ms   : 138.56
+  goal_dist_moy_m                       : 1.2242
+  nb_arrets_surs_attendus               : 1
+  nb_arrets_surs_confirmes              : 1
+
+Cas limites couverts : chemin_le_plus_court, couloir_bloque
+Cas limite NON teste : perte_balise (depend du module localisation, retire de l'equipe)
