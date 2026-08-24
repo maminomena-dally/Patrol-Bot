@@ -55,20 +55,27 @@ LOG_DIR = "logs"
 LOG_FILE = "robot_state_log.csv"
 RESULTS_DIR = "results"
 
-##### ==== planification/Commande : rôle 3 ======
 # ----------------------------------------------------------------------
-# Planification (Rôle 3)
+# Planification (Rôle 3 — Koja)
+# Référence : Cadrage, section 4 (environnement 20m×15m, résolution 0.1m)
 # ----------------------------------------------------------------------
-GRID_RESOLUTION = 0.1        # m par cellule
-ASTAR_8_CONNECTED = True     # 8 directions (diagonales)
-RRT_MAX_ITER = 2000
-RRT_STEP_SIZE = 0.3          # m
-RRT_GOAL_BIAS = 0.10
-RRT_GOAL_TOLERANCE = 0.3     # m
+WORLD_WIDTH = 20.0             # m — largeur de la carte
+WORLD_HEIGHT = 15.0            # m — hauteur de la carte
+GRID_RESOLUTION = 0.1         # m par cellule → 200×150 cellules
+ASTAR_8_CONNECTED = True      # 8 directions (diagonales avec coût √2)
 
 # ----------------------------------------------------------------------
-# Contrôle (rôle 3)
+# RRT (Rôle 3 — Koja)
 # ----------------------------------------------------------------------
-LOOKAHEAD_DISTANCE = 0.5     # m
-V_CRUISE = 0.3               # m/s
-GOAL_TOLERANCE = 0.15        # m
+RRT_MAX_ITER = 2000           # itérations max
+RRT_STEP_SIZE = 0.3           # m — pas d'extension
+RRT_GOAL_BIAS = 0.10          # probabilité de tirer vers le but
+RRT_GOAL_TOLERANCE = 0.3      # m — distance au but pour considérer atteint
+
+# ----------------------------------------------------------------------
+# Contrôle — Pure Pursuit (Rôle 3 — Koja)
+# Référence : Cadrage, critère < 10 cm au point cible
+# ----------------------------------------------------------------------
+LOOKAHEAD_DISTANCE = 0.5      # m — distance de visée
+V_CRUISE = 0.3                # m/s — vitesse de croisière
+GOAL_TOLERANCE = 0.10         # m — ≤ 10 cm comme exigé par le cadrage
