@@ -27,6 +27,7 @@ import numpy as np
 import config
 from planning.astar import AStarPlanner, create_test_grid
 from planning.rrt import RRTPlanner, grid_to_is_free
+from control.pure_pursuit import PurePursuitController
 
 
 class TestAStarBase(unittest.TestCase):
@@ -427,3 +428,176 @@ class TestAstarVsRRT(unittest.TestCase):
         # A* doit être au moins aussi bon (optimalité garantie)
         self.assertLessEqual(len_astar, len_rrt * 1.1,
             f"A* ({len_astar:.2f}m) devrait etre <= RRT ({len_rrt:.2f}m)")
+
+
+class TestPurePursuit(unittest.TestCase):
+    """Tests du controleur Pure Pursuit."""
+
+    def test_chemin_vide_arrete(self):
+        """Chemin vide -> commande (0, 0)."""
+        ctrl = PurePursuitController()
+        v, omega = ctrl.compute_command(pose=(0, 0, 0), path=[])
+        self.assertEqual(v, 0.0)
+        self.assertEqual(omega, 0.0)
+
+    def test_deja_au_but_arrete(self):
+        """Si le robot est deja au but (< 10 cm), commande (0, 0)."""
+        ctrl = PurePursuitController(goal_tolerance=0.10)
+        # Robot a (5.05, 5.05), but a (5.0, 5.0) -> distance = 0.07 m < 0.10
+        v, omega = ctrl.compute_command(
+            pose=(5.05, 5.05, 0),
+            path=[(0, 0), (3, 0), (5.0, 5.0)]
+        )
+        self.assertEqual(v, 0.0)
+        self.assertEqual(omega, 0.0)
+
+    def test_chemin_droit_omega_nul(self):
+        """Sur un chemin droit dans la direction du robot, omega = 0."""
+        ctrl = PurePursuitController(lookahead_distance=0.5, v_cruise=0.3)
+        # Robot oriente vers +x, chemin droit vers +x
+        v, omega = ctrl.compute_command(
+            pose=(0, 0, 0),
+            path=[(1, 0), (2, 0), (3, 0), (4, 0), (5, 0)]
+        )
+        self.assertAlmostEqual(omega, 0.0, places=3,
+                               msg="Sur un chemin droit aligne, omega doit etre ~0")
+        self.assertGreater(v, 0, "Le robot doit avancer")
+
+    def test_virage_omega_non_nul(self):
+        """Sur un chemin qui tourne, omega doit etre non nul."""
+        ctrl = PurePursuitController(lookahead_distance=0.5, v_cruise=0.3)
+        # Robot oriente vers +x, mais le lookahead point est en haut a droite
+        # Le point (0.3, 0.4) est a distance ~0.5 et angle ~53 deg
+        v, omega = ctrl.compute_command(
+            pose=(0, 0, 0),
+            path=[(0.3, 0.4), (1, 1), (2, 3)]
+        )
+        self.assertNotAlmostEqual(omega, 0.0, places=1,
+                                  msg="Le robot doit tourner")
+
+    def test_tolerance_but_respectee(self):
+        """Le robot s'arrete a <= 0.10 m du but.
+
+        Simule une poursuite pas a pas et verifie la precision.
+        """
+        ctrl = PurePursuitController(
+            lookahead_distance=0.5,
+            v_cruise=0.5,
+            goal_tolerance=0.10,
+        )
+        path = [(5.0, 0.0)]
+
+        # Simuler avec Euler a DT=0.05
+        x, y, theta = 0.0, 0.0, 0.0
+        for _ in range(500):  # max 25 secondes
+            v, omega = ctrl.compute_command(pose=(x, y, theta), path=path)
+            if v == 0.0 and omega == 0.0:
+                break
+            # Integration Euler
+            x += v * math.cos(theta) * config.DT
+            y += v * math.sin(theta) * config.DT
+            theta += omega * config.DT
+
+        dist = math.sqrt((x - 5.0)**2 + (y - 0.0)**2)
+        self.assertLessEqual(dist, config.GOAL_TOLERANCE,
+            f"Robot s'est arrete a {dist:.4f} m du but (> 0.10 m)")
+
+    def test_reset_recommence_debut(self):
+        """reset() doit remettre l'index a 0."""
+        ctrl = PurePursuitController()
+        ctrl._current_waypoint_idx = 5
+        ctrl.reset()
+        self.assertEqual(ctrl._current_waypoint_idx, 0)
+
+    def test_deceleration_pres_du_but(self):
+        """Le robot ralentit quand il est proche du but."""
+        ctrl = PurePursuitController(
+            lookahead_distance=0.5,
+            v_cruise=0.3,
+            goal_tolerance=0.10,
+        )
+        # Loin du but -> vitesse = v_cruise
+        v1, _ = ctrl.compute_command(
+            pose=(0, 0, 0),
+            path=[(10, 0)]
+        )
+        # Pres du but (< 2*lookahead = 1.0 m)
+        v2, _ = ctrl.compute_command(
+            pose=(9.5, 0, 0),
+            path=[(10, 0)]
+        )
+        self.assertLess(v2, v1, "Le robot doit ralentir pres du but")
+
+
+class TestPurePursuitIntegration(unittest.TestCase):
+    """Integration : A* + Pure Pursuit sur le Robot."""
+
+    def test_astar_pure_pursuit_atteint_le_but(self):
+        """Le robot suit un chemin A* et atteint le but a < 15 cm."""
+        from robot.robot import Robot
+        from simulation.simulator import Simulator
+
+        grid = create_test_grid(10.0, 10.0, resolution=0.1)
+        planner = AStarPlanner(grid, resolution=0.1, robot_radius=0.18)
+        path = planner.plan(start=(0.0, 0.0), goal=(8.0, 8.0))
+
+        self.assertGreater(len(path), 0)
+
+        robot = Robot()
+        sim = Simulator(robot)
+        ctrl = PurePursuitController(
+            lookahead_distance=0.5,
+            v_cruise=0.5,
+            goal_tolerance=0.10,
+        )
+
+        def command_fn(r, t):
+            px, py, pth = r.get_true_pose()
+            v, omega = ctrl.compute_command(
+                pose=(px, py, pth),
+                path=path,
+            )
+            r.set_velocity(v, omega)
+
+        sim.run(duration=60.0, command_fn=command_fn, verbose=False)
+
+        px, py, _ = robot.get_true_pose()
+        dist = math.sqrt((px - 8.0)**2 + (py - 8.0)**2)
+        self.assertLessEqual(dist, 0.15,
+            f"Robot a {dist:.3f} m du but apres 60s")
+
+    def test_rrt_pure_pursuit_atteint_le_but(self):
+        """Le robot suit un chemin RRT et atteint le but."""
+        from robot.robot import Robot
+        from simulation.simulator import Simulator
+
+        grid = create_test_grid(10.0, 10.0, resolution=0.1)
+        is_free = grid_to_is_free(grid, 0.1, 0.18)
+        rrt = RRTPlanner(is_free, bounds=(0, 0, 10, 10), seed=42)
+        path = rrt.plan(start=(0.0, 0.0), goal=(8.0, 8.0))
+
+        self.assertGreater(len(path), 0)
+
+        robot = Robot()
+        sim = Simulator(robot)
+        ctrl = PurePursuitController(
+            lookahead_distance=0.5,
+            v_cruise=0.5,
+            goal_tolerance=0.10,
+        )
+
+        def command_fn(r, t):
+            px, py, pth = r.get_true_pose()
+            v, omega = ctrl.compute_command(
+                pose=(px, py, pth),
+                path=path,
+            )
+            r.set_velocity(v, omega)
+
+        sim.run(duration=60.0, command_fn=command_fn, verbose=False)
+
+        px, py, _ = robot.get_true_pose()
+        dist = math.sqrt((px - 8.0)**2 + (py - 8.0)**2)
+        self.assertLessEqual(dist, 0.20,
+            f"Robot a {dist:.3f} m du but apres 60s (RRT)")
+
