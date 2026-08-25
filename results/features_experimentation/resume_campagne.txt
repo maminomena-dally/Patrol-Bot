@@ -4,8 +4,8 @@ CAMPAGNE D'ESSAIS -- Role 5 (Tino), Experimentation/Surete
 --- ASTAR ---
   nb_essais                             : 12
   taux_succes                           : 0.917
-  temps_replanification_moy_ms          : 49.24
-  temps_replanification_ecart_type_ms   : 6.29
+  temps_replanification_moy_ms          : 168.49
+  temps_replanification_ecart_type_ms   : 53.86
   goal_dist_moy_m                       : 1.2242
   distance_min_obstacle_m               : 0.0
   nb_arrets_surs_attendus               : 1
@@ -14,8 +14,8 @@ CAMPAGNE D'ESSAIS -- Role 5 (Tino), Experimentation/Surete
 --- RRT ---
   nb_essais                             : 12
   taux_succes                           : 0.917
-  temps_replanification_moy_ms          : 39.41
-  temps_replanification_ecart_type_ms   : 32.0
+  temps_replanification_moy_ms          : 168.39
+  temps_replanification_ecart_type_ms   : 126.71
   goal_dist_moy_m                       : 1.2242
   distance_min_obstacle_m               : 0.0
   nb_arrets_surs_attendus               : 1

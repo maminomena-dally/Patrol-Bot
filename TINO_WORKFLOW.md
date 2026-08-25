@@ -1,6 +1,6 @@
 🎯 Role 5 — Experimentation, Surete et Qualite : Suivi de travail
 Tino — M2 SDIA
-> **Derniere mise a jour** : Phase 5 en cours (distance min. obstacles ajoutee ; reste bloque en attente du groupe/dally)
+> **Derniere mise a jour** : Phase 5 en cours (distance min. obstacles + demo visuelle SafetyManager ajoutees ; reste bloque en attente du groupe/dally)
 > **Statut global** : 🟢 Phases 1-4 terminees, Phase 5 partiellement faite — le reste depend des autres roles
 > **Branche** : `feature/surete-experimentation`
 > **Sources lues** :
@@ -54,7 +54,9 @@ Phase 4 — Campagne d'essais statistique ✅ TERMINE
 [x] Execute pour A* et RRT (12 essais chacun) — 92% de succes, arrets surs attendus/confirmes = 1/1 pour les deux algos
 Commit : `feat(experiments): campagne d'essais statistique (10 nominaux + 2 cas limites)`
 Phase 5 — Integration finale & rapport ⏸ EN COURS
+[x] Script de demonstration visuelle (`experiments/demo_safety.py`) : rejoue le cas limite "couloir bloque" avec `SafetyManager.check()` appele reellement a chaque pas, produit un graphique montrant la trajectoire coloree par etat de surete + le point exact d'`ARRET_SUR` (`results/features_experimentation/images/safety_arret_sur_*.png`)
 [x] Distance minimale aux obstacles sur les essais de replanification (etendu depuis la version de Koja, qui ne la calculait que cote patrouille) — `min_obstacle_dist` disponible sur chaque essai + agregee (min global) dans `resume_campagne.txt`
+[x] Interface Tkinter interactive (`gui/safety_app.py`) : pilotage manuel du robot + panneau de test du SafetyManager en direct (obstacle imprevu, incertitude, capteur indisponible, journal des transitions) — teste sans mainloop (tkinter indisponible dans l'environnement de dev), a confirmer par Tino en local
 [ ] Brancher reellement `sim.on_safety` dans la boucle d'integration finale (avec dally), avec les vraies valeurs de `localizer.uncertainty` et `planner.plan()` a chaque pas — pour l'instant le SafetyManager est teste isolement (tests unitaires + simulation dans la campagne), pas encore cable dans une boucle complete — en attente de dally
 [ ] Cas limite 3 (perte de balise) : bloque tant que le module de localisation/balises n'a pas de responsable (voir "Ce qui reste a faire") — en attente du groupe
 [ ] Erreur de localisation (metrique du cahier des charges) : pas encore calculee dans la campagne — necessite de comparer position reelle vs position estimee sur la duree, une fois la localisation branchee dans la boucle (aujourd'hui les scenarios de Koja utilisent `get_true_pose()`, pas encore la pose estimee) — en attente de l'integration localisation
