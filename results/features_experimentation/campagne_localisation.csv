@@ -1,0 +1,5 @@
+planner,perte_balise,duree_perte,balise_effectivement_coupee,erreur_localisation_moy_m,erreur_localisation_max_m,incertitude_finale_m,etat_surete_final,arret_sur_declenche,temps_total_s
+astar,False,0.0,False,0.7086,1.9554,0.5018,ARRET_SUR,True,28.15
+astar,True,3.0,True,0.6348,1.227,0.5013,ARRET_SUR,True,28.1
+rrt,False,0.0,False,0.2245,0.6631,0.5017,ARRET_SUR,True,28.15
+rrt,True,3.0,True,0.7475,1.7768,0.5004,ARRET_SUR,True,28.05

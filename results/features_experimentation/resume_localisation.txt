@@ -1,0 +1,60 @@
+CAMPAGNE LOCALISATION -- Role 5 (Tino)
+Erreur de localisation + cas limite 'perte de balise'
+============================================================
+
+--- ASTAR (sans perte de balise) ---
+  planner                         : astar
+  perte_balise                    : False
+  duree_perte                     : 0.0
+  balise_effectivement_coupee     : False
+  erreur_localisation_moy_m       : 0.7086
+  erreur_localisation_max_m       : 1.9554
+  incertitude_finale_m            : 0.5018
+  etat_surete_final               : ARRET_SUR
+  arret_sur_declenche             : True
+  temps_total_s                   : 28.15
+  journal_surete:
+    t=28.15s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+
+--- ASTAR (avec perte de balise) ---
+  planner                         : astar
+  perte_balise                    : True
+  duree_perte                     : 3.0
+  balise_effectivement_coupee     : True
+  erreur_localisation_moy_m       : 0.6348
+  erreur_localisation_max_m       : 1.227
+  incertitude_finale_m            : 0.5013
+  etat_surete_final               : ARRET_SUR
+  arret_sur_declenche             : True
+  temps_total_s                   : 28.1
+  journal_surete:
+    t=28.10s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+
+--- RRT (sans perte de balise) ---
+  planner                         : rrt
+  perte_balise                    : False
+  duree_perte                     : 0.0
+  balise_effectivement_coupee     : False
+  erreur_localisation_moy_m       : 0.2245
+  erreur_localisation_max_m       : 0.6631
+  incertitude_finale_m            : 0.5017
+  etat_surete_final               : ARRET_SUR
+  arret_sur_declenche             : True
+  temps_total_s                   : 28.15
+  journal_surete:
+    t=28.15s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+
+--- RRT (avec perte de balise) ---
+  planner                         : rrt
+  perte_balise                    : True
+  duree_perte                     : 3.0
+  balise_effectivement_coupee     : True
+  erreur_localisation_moy_m       : 0.7475
+  erreur_localisation_max_m       : 1.7768
+  incertitude_finale_m            : 0.5004
+  etat_surete_final               : ARRET_SUR
+  arret_sur_declenche             : True
+  temps_total_s                   : 28.05
+  journal_surete:
+    t=28.05s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+
