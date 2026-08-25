@@ -474,6 +474,26 @@ def scenario_patrouille(planner_name="astar", verbose=False,
 # Scenario Replanification (Role 3 - Koja)
 # ======================================================================
 
+def _min_obstacle_dist_sur_trajet(robot, initial_obstacles, unexpected_obstacle, obstacle_time):
+    """
+    Distance minimale robot-obstacle sur tout l'historique de l'essai,
+    en tenant compte de l'apparition de l'obstacle imprevu a obstacle_time.
+
+    Ajoute par Role 5 (Tino) pour completer, cote replanification, la
+    metrique deja calculee par Koja cote patrouille (scenario_patrouille).
+    """
+    min_d = float("inf")
+    for state in robot.history:
+        obstacles_actifs = (
+            initial_obstacles if state["time"] < obstacle_time
+            else initial_obstacles + [unexpected_obstacle]
+        )
+        d = _min_dist_to_rects(state["x"], state["y"], obstacles_actifs, config.ROBOT_RADIUS)
+        if d < min_d:
+            min_d = d
+    return min_d
+
+
 def scenario_replanification(planner_name="astar", verbose=False,
                              plot_path=None, csv_path=None,
                              unexpected_obstacle=None, obstacle_time=8.0):
@@ -544,6 +564,7 @@ def scenario_replanification(planner_name="astar", verbose=False,
         "goal_dist": float("inf"),
         "obstacle_appeared": False,
         "path_found_after_replan": True,  # pas de replan tente -> pas de probleme
+        "min_obstacle_dist": float("inf"),  # ajoute par Role 5 (Tino)
     }
 
     if not path:
@@ -567,6 +588,9 @@ def scenario_replanification(planner_name="astar", verbose=False,
             metrics["success"] = True
             metrics["goal_dist"] = 0.0
             metrics["total_time"] = round(robot.time, 2)
+            metrics["min_obstacle_dist"] = round(
+                _min_obstacle_dist_sur_trajet(robot, initial_obstacles, unexpected_obstacle, obstacle_time), 4
+            )
             if verbose:
                 print(f"  But atteint AVANT l'obstacle a t={robot.time:.1f}s")
             return metrics
@@ -609,6 +633,9 @@ def scenario_replanification(planner_name="astar", verbose=False,
             math.sqrt((px - goal[0]) ** 2 + (py - goal[1]) ** 2), 4
         )
         metrics["total_time"] = round(robot.time, 2)
+        metrics["min_obstacle_dist"] = round(
+            _min_obstacle_dist_sur_trajet(robot, initial_obstacles, unexpected_obstacle, obstacle_time), 4
+        )
         return metrics
 
     if verbose:
@@ -629,6 +656,9 @@ def scenario_replanification(planner_name="astar", verbose=False,
         math.sqrt((px - goal[0]) ** 2 + (py - goal[1]) ** 2), 4
     )
     metrics["total_time"] = round(robot.time, 2)
+    metrics["min_obstacle_dist"] = round(
+        _min_obstacle_dist_sur_trajet(robot, initial_obstacles, unexpected_obstacle, obstacle_time), 4
+    )
 
     if verbose:
         status = "OK" if metrics["success"] else "ECHEC"

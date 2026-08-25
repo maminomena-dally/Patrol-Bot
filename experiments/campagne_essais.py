@@ -176,6 +176,7 @@ def agreger(resultats):
     succes = [r["success"] for r in resultats]
     temps_replan = [r["replan_time_ms"] for r in resultats if r["replan_count"] > 0]
     goal_dist = [r["goal_dist"] for r in resultats if r["goal_dist"] != float("inf")]
+    dist_obstacles = [r["min_obstacle_dist"] for r in resultats if r["min_obstacle_dist"] != float("inf")]
 
     resume = {
         "nb_essais": n,
@@ -185,6 +186,7 @@ def agreger(resultats):
             round(stats.stdev(temps_replan), 2) if len(temps_replan) > 1 else None
         ),
         "goal_dist_moy_m": round(stats.mean(goal_dist), 4) if goal_dist else None,
+        "distance_min_obstacle_m": round(min(dist_obstacles), 4) if dist_obstacles else None,
         "nb_arrets_surs_attendus": sum(r["aucun_chemin_trouve"] for r in resultats),
         "nb_arrets_surs_confirmes": sum(
             r["aucun_chemin_trouve"] and r["safety_ok"] for r in resultats
