@@ -19,7 +19,6 @@ Metriques : taux de succes, temps de mission, longueur du trajet, distance min a
 Difference importante avec le cadrage initial
 Le cadrage prevoit une equipe de 5 (avec Kojy sur perception/localisation). Kojy a ete retiree de l'equipe en cours de route — l'equipe est maintenant a 4 (Malala, Koja, dally, Tino). Consequence directe sur ce role : le cas limite "perte temporaire d'une balise pendant la replanification" ne peut pas etre teste tant que personne ne reprend le module de localisation/balises. Voir section "Ce qui reste a faire" plus bas.
 Autre ecart : le depot contient un dossier `security/` (intrusion, alertes, sirene) qui n'existe pas dans les 5 roles d'origine du cadrage — un role "Securite" non attribue depuis le depart de Kojy.
----
 Checklist principale
 Phase 1 — Setup & Comprehension ✅ TERMINE
 [x] Recuperer le depot, comprendre `Robot`, `Simulator`, les points d'extension (`sim.on_safety`, etc.)
@@ -58,16 +57,17 @@ Phase 5 — Integration finale & rapport ⏸ EN COURS
 [x] Distance minimale aux obstacles sur les essais de replanification (etendu depuis la version de Koja, qui ne la calculait que cote patrouille) — `min_obstacle_dist` disponible sur chaque essai + agregee (min global) dans `resume_campagne.txt`
 [x] Interface Tkinter interactive (`gui/safety_app.py`) : pilotage manuel du robot + panneau de test du SafetyManager en direct (obstacle imprevu, incertitude, capteur indisponible, journal des transitions) — teste sans mainloop (tkinter indisponible dans l'environnement de dev), a confirmer par Tino en local
 [ ] Brancher reellement `sim.on_safety` dans la boucle d'integration finale (avec dally), avec les vraies valeurs de `localizer.uncertainty` et `planner.plan()` a chaque pas — pour l'instant le SafetyManager est teste isolement (tests unitaires + simulation dans la campagne), pas encore cable dans une boucle complete — en attente de dally
-[ ] Cas limite 3 (perte de balise) : bloque tant que le module de localisation/balises n'a pas de responsable (voir "Ce qui reste a faire") — en attente du groupe
-[ ] Erreur de localisation (metrique du cahier des charges) : pas encore calculee dans la campagne — necessite de comparer position reelle vs position estimee sur la duree, une fois la localisation branchee dans la boucle (aujourd'hui les scenarios de Koja utilisent `get_true_pose()`, pas encore la pose estimee) — en attente de l'integration localisation
+[x] Cas limite 3 (perte de balise) : DEBLOQUE — `localization/localization.py`, `sensors/odometry.py`, `sensors/landmarks.py` sont en realite deja tous implementes (verifie sur le depot a jour), le blocage n'etait pas reel. Teste dans `experiments/campagne_localisation.py`
+[x] Erreur de localisation (metrique du cahier des charges) : DEBLOQUE — calculee reellement dans `experiments/campagne_localisation.py` (Odometry + LandmarkDetector + Localizer branches, pas simules), voir `results/features_experimentation/resume_localisation.txt`
 [ ] Rediger la section 4/5 du rapport (methodologie de la campagne, resultats, analyse des cas limites, limites connues)
 [ ] Decider avec le groupe qui reprend `sensors/lidar.py` (stub vide) — necessaire pour un `obstacle_distance` reel dans `SafetyManager.check()` (utilise pour l'instant uniquement dans les tests avec des valeurs simulees) — en attente du groupe
----
+[ ] Brancher reellement `sim.on_safety` dans la boucle d'integration finale (avec dally) — en attente de dally (seule tache de code encore bloquee de ce role)
+Constat de calibration a signaler au groupe (voir `resume_localisation.txt`) : avec `LOCALIZATION_PROCESS_NOISE=0.05` et les balises actuelles, l'incertitude derive jusqu'au seuil `LOCALIZATION_UNCERTAINTY_MAX=0.5` sur un trajet d'environ 15-20m, MEME SANS perte de balise. La distinction "avec/sans perte de balise" est donc masquee par cette derive de fond. A ajuster (process_noise plus faible, ou balises plus rapprochees) une fois le reste de l'equipe pret a recalibrer ensemble — matiere utile pour la section "limites connues" du rapport.
 Historique des commits
 Date	Commit	Fichiers	Tests
 J+X	`feat(safety): implémente SafetyManager (arrêt sûr, journal, reprise)`	`safety/safety_manager.py`, `tests/test_safety.py`	74 pass (13 safety + 61 existants)
 J+X	`feat(experiments): campagne d'essais statistique (10 nominaux + 2 cas limites)`	`experiments/campagne_essais.py` (nouveau), `experiments/run_experiments.py` (ajouts), `results/features_experimentation/`	74 pass (aucune regression)
----
+J+X	`feat(experiments): erreur de localisation + cas limite perte de balise`	`experiments/campagne_localisation.py` (nouveau), `results/features_experimentation/campagne_localisation.csv`, `resume_localisation.txt`	74 pass (aucune regression)
 Journal de bord
 Jour 1 — Setup + SafetyManager
 Fait : Branche creee, lecture du code existant (stub deja tres documente par l'equipe, interfaces de `Robot` et `Localizer` deja claires). Implementation complete de `SafetyManager` avec machine a etats, 13 tests unitaires, 74/74 tests du depot passent.
@@ -90,10 +90,12 @@ Bloquants : Aucun — reutilise `_min_dist_to_rects()` deja ecrite par Koja
 Decisions : Calcul factorise dans une fonction dediee (`_min_obstacle_dist_sur_trajet`) appelee a chaque point de sortie de `scenario_replanification()` (4 `return` possibles), plutot que duplique — evite les incoherences si un cas est oublie
 A faire ensuite (bloque, en attente des autres roles) :
 Branchement reel de `sim.on_safety` dans la boucle finale -> attend dally
-Erreur de localisation -> attend une pose estimee branchee dans les scenarios
-Cas limite "perte de balise" -> attend une decision du groupe sur qui reprend la localisation
 `sensors/lidar.py` / `security/` -> attend une decision du groupe
----
+Jour 4 — Erreur de localisation + cas limite perte de balise
+Fait : Verification sur le depot a jour que `localization/localization.py`, `sensors/odometry.py` et `sensors/landmarks.py` sont deja reellement implementes (pas des stubs) — le blocage "attend Kojy" n'etait plus reel. Cree `experiments/campagne_localisation.py` : branche Odometry + LandmarkDetector + Localizer reellement dans une boucle de simulation (pas simules), calcule l'erreur de localisation (position reelle vs estimee), et teste le cas limite "perte de balise" (balises rendues indetectables 3s pendant la replanification).
+Bloquants : Aucun cote code. Trouve un probleme de CALIBRATION (pas un bug) : les 4 balises "points de controle" de Koja sont a >4.5m du corridor de test de replanification (hors du rayon de detection de 2.0m) — inutilisables telles quelles pour ce scenario. Balises dediees definies le long du corridor a la place (documente dans le fichier).
+Decisions : Ne modifie ni `sensors/lidar.py` ni `security/` (toujours des stubs, hors de portee) — nouveau module entierement independant, n'utilise que les modules deja finis
+Resultat notable : avec la config actuelle (`LOCALIZATION_PROCESS_NOISE=0.05`), l'incertitude dérive jusqu'au seuil meme SANS perte de balise sur un trajet de 15-20m — a signaler au groupe pour recalibration (voir "Constat de calibration" en Phase 5)
 Interface publique de mes modules
 SafetyManager
 ```python
@@ -139,11 +141,10 @@ Points d'attention pour l'integration (Dally)
 `SafetyManager.check()` doit etre appele avant `command_fn` dans la boucle (comme `on_safety` dans `simulation/simulator.py`), pour que `robot.emergency_stop()` prenne effet sur le pas courant
 Ne jamais appeler `robot.resume()` directement depuis un autre module — toujours passer par `resume_si_possible()`, pour garder la decision de reprise centralisee
 `obstacle_distance=None` declenche systematiquement un arret par prudence (capteur indisponible) — a garder en tete tant que `sensors/lidar.py` n'est pas implemente
----
 Notes de collaboration
 Interface avec les autres roles
 Role 1 (Malala — Cinematique) : ✅ Aucune dependance bloquante — `robot.emergency_stop()`/`resume()` deja disponibles et stables, utilises tels quels
-Role 2 (Kojy — Perception/Localisation) : ⚠️ Role retire de l'equipe. Son travail sur `Localizer.uncertainty` etait deja mergé avant son depart et reste utilisable, mais plus personne ne maintient ce module — bloque le cas limite "perte de balise" et le calcul de l'erreur de localisation
+Role 2 (Kojy — Perception/Localisation) : ⚠️ Role retire de l'equipe, mais son travail (`Localizer`, `Odometry`, `LandmarkDetector`) est complet et fonctionnel — verifie et reellement utilise dans `experiments/campagne_localisation.py`. Ne bloque donc plus rien pour ce role. Reste sans responsable pour la maintenance/calibration future (voir "Constat de calibration", Phase 5)
 Role 3 (Koja — Planification/Commande) : ✅ Interface stable (`planner.plan()` retourne `[]` si echec, `scenario_replanification()` etendu sans casser son code). Guide dedie tres complet laisse dans `ROLE3_WORKFLOW.md`
 Role 4 (Dally — Simulation/Integration) : ⏳ En attente — le branchement reel de `sim.on_safety` dans la boucle d'integration finale reste a faire ensemble
 Equipe Securite (`security/`) : ⏳ Sans responsable depuis le depart de Kojy. `SafetyManager` est concu pour fonctionner sans ce module (relai optionnel, `no-op` si absent), donc pas bloquant pour ce role, mais a trancher pour la livraison finale
@@ -157,5 +158,8 @@ Fichier	Role	Description
 `tests/test_safety.py`	Nouveau	13 tests unitaires
 `experiments/campagne_essais.py`	Nouveau	Campagne statistique (10 nominaux + 2 cas limites, x2 algos)
 `experiments/run_experiments.py`	Modifie (ajouts)	2 parametres optionnels + 1 champ de metrique, sur `scenario_replanification()` (code de Koja preserve)
-`results/features_experimentation/`	Nouveau	Resultats agreges (CSV + resume texte)
-`ROLE5_WORKFLOW.md`	Nouveau	Ce fichier
+`experiments/demo_safety.py`	Nouveau	Demo visuelle (graphique) du SafetyManager
+`gui/safety_app.py`	Nouveau	Interface Tkinter interactive de test du SafetyManager
+`experiments/campagne_localisation.py`	Nouveau	Erreur de localisation + cas limite perte de balise (localisation reelle)
+`results/features_experimentation/`	Nouveau	Resultats agreges (CSV + resume texte, campagnes essais + localisation)
+`TINO_WORKFLOW.md`	Nouveau (ex ROLE5_WORKFLOW.md)	Ce fichier
