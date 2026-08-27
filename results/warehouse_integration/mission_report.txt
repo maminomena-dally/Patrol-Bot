@@ -1,0 +1,49 @@
+======================================================================
+  RAPPORT D'INTÉGRATION ROLE 2 ↔ ROLE 3
+  Généré le 2026-08-27 11:39:28
+======================================================================
+
+--- PATROUILLE A* AVEC LOCALISATION ---
+  Succès           : OUI
+  Waypoints        : 4/4
+  Temps de mission : 145.2s
+  Longueur chemin  : 39.01m
+  Temps planif.    : 98.1ms total
+  Erreur loc. max  : 0.0845m
+  Incertitude fin. : 0.0235m
+  Zones visitées   : 100.0%
+    ✓ Zone A (Nord-Ouest)
+    ✓ Zone B (Nord-Est)
+    ✓ Zone C (Sud-Ouest)
+    ✓ Zone D (Sud-Est)
+
+--- PATROUILLE RRT AVEC LOCALISATION ---
+  Succès           : OUI
+  Waypoints        : 4/4
+  Temps de mission : 145.8s
+  Longueur chemin  : 39.26m
+  Temps planif.    : 86.3ms total
+  Erreur loc. max  : 0.0947m
+  Incertitude fin. : 0.0219m
+  Zones visitées   : 100.0%
+    ✓ Zone A (Nord-Ouest)
+    ✓ Zone B (Nord-Est)
+    ✓ Zone C (Sud-Ouest)
+    ✓ Zone D (Sud-Est)
+
+--- BLOCAGE DYNAMIQUE ---
+  Algorithme       : ASTAR
+  Succès           : OUI
+  Obstacle apparu  : OUI
+  Temps replan     : 346.96ms
+  Dist. au but     : 0.1481m
+  Safety ARRET_SUR : NON
+
+--- BLOCAGE EXTRÊME ---
+  Algorithme       : ASTAR
+  Safety ARRET_SUR : NON
+  Chemin après bloc: OUI
+
+======================================================================
+  Fichiers générés dans : results/warehouse_integration
+======================================================================

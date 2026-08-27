@@ -347,14 +347,11 @@ def draw_warehouse(ax, obstacles, title="", patches=None):
 
 def plot_result(robot_history, obstacles, waypoints, landmarks,
                 title, save_path, extra_obstacles=None, safety_history=None,
-                est_history=None, planned_paths=None, replanned_paths=None):
+                est_history=None):
     """Trace la trajectoire du robot sur l'entrepôt.
 
-    Args:
-        planned_paths:   liste de chemins planifiés (orange) — "Path Normale"
-        replanned_paths: liste de chemins replanifiés (gris) — "Path Anticipation blocage"
-        Si est_history est fourni, trace aussi la trajectoire EKF estimée
-        (rouge pointillé) + des lignes grises reliant true↔est.
+    Si est_history est fourni, trace aussi la trajectoire EKF estimée
+    (rouge pointillé) + des lignes grises reliant true↔est.
     """
     plt, patches = get_matplotlib()
     if plt is None:
@@ -399,26 +396,6 @@ def plot_result(robot_history, obstacles, waypoints, landmarks,
                    [waypoints[i][1], waypoints[j][1]],
                    "g--", alpha=0.25, linewidth=1)
 
-    # --- Path(s) PLANIFIÉ(S) — orange (comme dans le schéma de référence) ---
-    if planned_paths:
-        for pi, pp in enumerate(planned_paths):
-            if pp and len(pp) > 0:
-                ppx = [p[0] for p in pp]
-                ppy = [p[1] for p in pp]
-                label = "Path Normale" if pi == 0 else None
-                ax.plot(ppx, ppy, "-", color="#FF9800", linewidth=2.0,
-                        alpha=0.8, zorder=2, label=label)
-
-    # --- Path(s) REPLANIFIÉ(S) — gris (chemin avec anticipation blocage) ---
-    if replanned_paths:
-        for pi, rp in enumerate(replanned_paths):
-            if rp and len(rp) > 0:
-                rpx = [p[0] for p in rp]
-                rpy = [p[1] for p in rp]
-                label = "Path Anticipation blocage" if pi == 0 else None
-                ax.plot(rpx, rpy, "-", color="#757575", linewidth=2.0,
-                        alpha=0.7, zorder=2, label=label)
-
     # Trajectoire ESTIMÉE par l'EKF (ligne rouge pointillée)
     if est_history and len(est_history) > 0:
         exs = [s["x"] for s in est_history]
@@ -432,12 +409,10 @@ def plot_result(robot_history, obstacles, waypoints, landmarks,
         ys = [s["y"] for s in robot_history]
         ax.plot(xs, ys, "-", color="#1565C0", linewidth=1.2,
                 label="Trajectoire réelle (vraie)", alpha=0.7, zorder=4)
-        # Départ (triangle verte, comme dans le schéma)
-        ax.plot(xs[0], ys[0], "^", color="#4CAF50", markersize=16,
-                markeredgecolor="#1B5E20", label="Départ", zorder=7)
-        # Arrivée (carré rouge, comme dans le schéma)
-        ax.plot(xs[-1], ys[-1], "s", color="#F44336", markersize=14,
-                markeredgecolor="#B71C1C", label="Arrivée", zorder=7)
+        ax.plot(xs[0], ys[0], "o", color="#4CAF50", markersize=12,
+                label="Départ", zorder=7)
+        ax.plot(xs[-1], ys[-1], "s", color="#F44336", markersize=12,
+                label="Arrivée", zorder=7)
 
         # Lignes de connexion true↔est toutes les N pas (pour voir l'erreur)
         if est_history and len(est_history) > 0:
@@ -554,7 +529,6 @@ def scenario_patrol_localized(planner_name="astar", verbose=False):
 
     t_start = robot.time
     est_history_all = []  # collecte des poses estimées pour visualisation
-    all_planned_paths = []  # collecte des chemins planifiés pour visualisation
 
     for wp_idx, wp in enumerate(PATROL_WAYPOINTS):
         est = localizer.estimated_pose
@@ -569,9 +543,6 @@ def scenario_patrol_localized(planner_name="astar", verbose=False):
             if verbose:
                 print(f"  WP{wp_idx+1} {wp}: PAS DE CHEMIN")
             break
-
-        # Sauvegarder le chemin planifié brut (avant resample) pour visualisation
-        all_planned_paths.append(list(path))
 
         plen = path_length(path)
         metrics["total_path_length"] += plen
@@ -621,7 +592,7 @@ def scenario_patrol_localized(planner_name="astar", verbose=False):
         if metrics["alert_triggered"]:
             print(f"  ⚠️ ALERTE : complétion < {ALERT_THRESHOLD}% !")
 
-    return metrics, robot, est_history_all, all_planned_paths
+    return metrics, robot, est_history_all
 
 
 # =========================================================================
@@ -661,11 +632,9 @@ def scenario_dynamic_blockage(planner_name="astar", verbose=False):
     sm = SafetyManager()
 
     dt = config.DT
-    original_path = planner.plan(start=start, goal=goal)
-    original_path_for_viz = list(original_path) if original_path else []  # sauvegarder le path normal
-    path = resample_path(original_path, max_seg=0.8)
+    path = planner.plan(start=start, goal=goal)
+    path = resample_path(path, max_seg=0.8)
     controller.reset()
-    replanned_path_for_viz = []  # sera rempli si replanification
 
     metrics = {
         "planner": planner_name,
@@ -712,7 +681,6 @@ def scenario_dynamic_blockage(planner_name="astar", verbose=False):
             )
 
             if new_path:
-                replanned_path_for_viz = list(new_path)  # sauvegarder path replanifié
                 path = resample_path(new_path, max_seg=0.8)
                 controller.reset()
                 if verbose:
@@ -773,7 +741,7 @@ def scenario_dynamic_blockage(planner_name="astar", verbose=False):
         print(f"  Replan : {metrics['replan_time_ms']}ms")
         print(f"  Dist but : {metrics['goal_dist']}m")
 
-    return metrics, robot, DYNAMIC_OBSTACLE, safety_history, original_path_for_viz, replanned_path_for_viz
+    return metrics, robot, DYNAMIC_OBSTACLE, safety_history
 
 
 # =========================================================================
@@ -812,7 +780,6 @@ def scenario_extreme_blockage(planner_name="astar", verbose=False):
 
     dt = config.DT
     path = planner.plan(start=start, goal=goal)
-    original_path_ext = list(path) if path else []  # sauvegarder pour viz
     path = resample_path(path, max_seg=0.8)
     controller.reset()
 
@@ -916,7 +883,7 @@ def scenario_extreme_blockage(planner_name="astar", verbose=False):
             print(f"  Temps d'arrêt : t={metrics['safety_time']}s")
             print(f"  Position d'arrêt : {metrics['stop_position']}")
 
-    return metrics, robot, FULL_BLOCK, safety_history, original_path_ext
+    return metrics, robot, FULL_BLOCK, safety_history
 
 
 # =========================================================================
@@ -1113,14 +1080,13 @@ def main():
 
     # --- 1. Patrouille A* ---
     print("\n[1] Patrouille A* avec localisation...")
-    m, robot_astar, est_hist_astar, planned_astar = scenario_patrol_localized("astar", verbose=True)
+    m, robot_astar, est_hist_astar = scenario_patrol_localized("astar", verbose=True)
     all_metrics["patrol_astar"] = m
     plot_result(
         robot_astar.history, WAREHOUSE_OBSTACLES, PATROL_WAYPOINTS, LANDMARKS,
         f"Patrouille A* avec localisation ({m['waypoints_reached']}/{m['waypoints_total']} WP)",
         os.path.join(RESULTS_DIR, "patrol_astar_localized.png"),
         est_history=est_hist_astar,
-        planned_paths=planned_astar,
     )
     # Log CSV
     csv_path = os.path.join(RESULTS_DIR, "patrol_astar_log.csv")
@@ -1139,14 +1105,13 @@ def main():
 
     # --- 2. Patrouille RRT ---
     print("\n[2] Patrouille RRT avec localisation...")
-    m, robot_rrt, est_hist_rrt, planned_rrt = scenario_patrol_localized("rrt", verbose=True)
+    m, robot_rrt, est_hist_rrt = scenario_patrol_localized("rrt", verbose=True)
     all_metrics["patrol_rrt"] = m
     plot_result(
         robot_rrt.history, WAREHOUSE_OBSTACLES, PATROL_WAYPOINTS, LANDMARKS,
         f"Patrouille RRT avec localisation ({m['waypoints_reached']}/{m['waypoints_total']} WP)",
         os.path.join(RESULTS_DIR, "patrol_rrt_localized.png"),
         est_history=est_hist_rrt,
-        planned_paths=planned_rrt,
     )
     csv_path = os.path.join(RESULTS_DIR, "patrol_rrt_log.csv")
     robot_rrt.export_log(csv_path)
@@ -1154,7 +1119,7 @@ def main():
 
     # --- 3. Blocage dynamique ---
     print("\n[3] Blocage dynamique en allée...")
-    m, robot_dyn, dyn_obs, safety_hist, orig_path, replan_path = scenario_dynamic_blockage("astar", verbose=True)
+    m, robot_dyn, dyn_obs, safety_hist = scenario_dynamic_blockage("astar", verbose=True)
     all_metrics["dynamic_blockage"] = m
     plot_result(
         robot_dyn.history, WAREHOUSE_OBSTACLES, PATROL_WAYPOINTS, LANDMARKS,
@@ -1162,13 +1127,11 @@ def main():
         os.path.join(RESULTS_DIR, "dynamic_blockage.png"),
         extra_obstacles=[dyn_obs],
         safety_history=safety_hist,
-        planned_paths=[orig_path] if orig_path else None,
-        replanned_paths=[replan_path] if replan_path else None,
     )
 
     # --- 4. Blocage extrême ---
     print("\n[4] Blocage extrême (couloir fermé)...")
-    m, robot_ext, ext_obs, safety_hist_ext, ext_orig_path = scenario_extreme_blockage("astar", verbose=True)
+    m, robot_ext, ext_obs, safety_hist_ext = scenario_extreme_blockage("astar", verbose=True)
     all_metrics["extreme_blockage"] = m
     plot_result(
         robot_ext.history, WAREHOUSE_OBSTACLES, PATROL_WAYPOINTS, LANDMARKS,
@@ -1176,7 +1139,6 @@ def main():
         os.path.join(RESULTS_DIR, "extreme_blockage.png"),
         extra_obstacles=[ext_obs],
         safety_history=safety_hist_ext,
-        planned_paths=[ext_orig_path] if ext_orig_path else None,
     )
 
     # --- 5. Rapport ---
