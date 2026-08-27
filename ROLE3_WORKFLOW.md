@@ -692,7 +692,7 @@ print(m["completion_pct"])         # 100.0
 | **Role** | Test d'integration Role 2↔3 | Integration finale du systeme |
 | **Racks** | 9 gros blocs (3.5m × 1.5m), 3 rangées de 3 | 12 racks fins (2m × 0.4m), 3 colonnes de 4 |
 | **Waypoints** | 4 (dans les 2 allées principales) | 8 (circuit complet quai → allées → fond → retour) |
-| **Balises EKF** | 9 (pour le recalage) | ❌ **Aucune** — a ajouter par Kojy |
+| **Balises EKF** | 9 (pour le recalage) | ✅ **9 balises ajoutees** |
 | **Zones de mission** | 4 zones (metrique couverture) | ❌ Aucune |
 | **Layout utilise pour** | Tests unitaires + visuels dans `results/warehouse_integration/` | Integration finale par Dally |
 
@@ -704,21 +704,11 @@ grid = create_test_grid(20.0, 15.0, 0.1, WAREHOUSE_OBSTACLES)
 path = planner.plan(start=(1.5, 1.0), goal=WAREHOUSE_WAYPOINTS[1])
 ```
 
-**Pour Kojy** : Ton `entrepot_patrouille.py` n'a pas de balises. Pour que l'EKF fonctionne
-avec ce layout, il faut ajouter une liste de landmarks. Exemple :
+**Pour Kojy** : ✅ **FAIT** — `WAREHOUSE_LANDMARKS` (9 balises) a ete ajoute a `entrepot_patrouille.py`.
+Dally n'a plus qu'a l'importer :
 ```python
-# A ajouter dans entrepot_patrouille.py ou dans un fichier separe
-WAREHOUSE_LANDMARKS = [
-    {"id": 0, "x": 3.0, "y": 0.5},   # bas-gauche
-    {"id": 1, "x": 10.0, "y": 0.5},   # bas-milieu
-    {"id": 2, "x": 17.0, "y": 0.5},   # bas-droite
-    {"id": 3, "x": 3.0, "y": 7.5},    # milieu-gauche
-    {"id": 4, "x": 10.0, "y": 7.5},   # centre
-    {"id": 5, "x": 17.0, "y": 7.5},   # milieu-droite
-    {"id": 6, "x": 3.0, "y": 14.5},  # haut-gauche
-    {"id": 7, "x": 10.0, "y": 14.5},  # haut-milieu
-    {"id": 8, "x": 17.0, "y": 14.5},  # haut-droite
-]
+from entrepot_patrouille import WAREHOUSE_LANDMARKS
+detector = LandmarkDetector(robot, WAREHOUSE_LANDMARKS)
 ```
 
 ### Convention Git
