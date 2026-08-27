@@ -14,6 +14,7 @@
 
 ## 📌 Exigences OFFICIELLES pour le Role 3
 
+
 ### Ce que le prof attend de TOI
 1. **A\*** : planification sur grille, optimal, deterministe (slide 25)
 2. **RRT** : echantillonnage aleatoire, plus rapide en grand espace (slide 24)
