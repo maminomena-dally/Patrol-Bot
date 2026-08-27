@@ -60,7 +60,7 @@ Phase 5 — Integration finale & rapport ⏸ EN COURS
 [x] Cas limite 3 (perte de balise) : DEBLOQUE — `localization/localization.py`, `sensors/odometry.py`, `sensors/landmarks.py` sont en realite deja tous implementes (verifie sur le depot a jour), le blocage n'etait pas reel. Teste dans `experiments/campagne_localisation.py`
 [x] Erreur de localisation (metrique du cahier des charges) : DEBLOQUE — calculee reellement dans `experiments/campagne_localisation.py` (Odometry + LandmarkDetector + Localizer branches, pas simules), voir `results/features_experimentation/resume_localisation.txt`
 [ ] Rediger la section 4/5 du rapport (methodologie de la campagne, resultats, analyse des cas limites, limites connues)
-[ ] Decider avec le groupe qui reprend `sensors/lidar.py` (stub vide) — necessaire pour un `obstacle_distance` reel dans `SafetyManager.check()` (utilise pour l'instant uniquement dans les tests avec des valeurs simulees) — en attente du groupe
+[x] `sensors/lidar.py` et `sensors/cameras.py` : DEBLOQUE — ces 2 capteurs sont tombes sur ce role (sans responsable depuis le depart de Kojy). Implementes, testes (9 tests), et branches reellement (obstacle_distance vient desormais du lidar, plus une valeur simulee) dans demo_safety.py, campagne_localisation.py et gui/safety_app.py
 [ ] Brancher reellement `sim.on_safety` dans la boucle d'integration finale (avec dally) — en attente de dally (seule tache de code encore bloquee de ce role)
 Constat de calibration a signaler au groupe (voir `resume_localisation.txt`) : avec `LOCALIZATION_PROCESS_NOISE=0.05` et les balises actuelles, l'incertitude derive jusqu'au seuil `LOCALIZATION_UNCERTAINTY_MAX=0.5` sur un trajet d'environ 15-20m, MEME SANS perte de balise. La distinction "avec/sans perte de balise" est donc masquee par cette derive de fond. A ajuster (process_noise plus faible, ou balises plus rapprochees) une fois le reste de l'equipe pret a recalibrer ensemble — matiere utile pour la section "limites connues" du rapport.
 Historique des commits
@@ -90,11 +90,15 @@ Bloquants : Aucun — reutilise `_min_dist_to_rects()` deja ecrite par Koja
 Decisions : Calcul factorise dans une fonction dediee (`_min_obstacle_dist_sur_trajet`) appelee a chaque point de sortie de `scenario_replanification()` (4 `return` possibles), plutot que duplique — evite les incoherences si un cas est oublie
 A faire ensuite (bloque, en attente des autres roles) :
 Branchement reel de `sim.on_safety` dans la boucle finale -> attend dally
-`sensors/lidar.py` / `security/` -> attend une decision du groupe
+`security/` (intrusion_detector, alert_manager, speaker) -> toujours sans responsable, non touche (hors de perimetre de ce role)
 Jour 4 — Erreur de localisation + cas limite perte de balise
 Fait : Verification sur le depot a jour que `localization/localization.py`, `sensors/odometry.py` et `sensors/landmarks.py` sont deja reellement implementes (pas des stubs) — le blocage "attend Kojy" n'etait plus reel. Cree `experiments/campagne_localisation.py` : branche Odometry + LandmarkDetector + Localizer reellement dans une boucle de simulation (pas simules), calcule l'erreur de localisation (position reelle vs estimee), et teste le cas limite "perte de balise" (balises rendues indetectables 3s pendant la replanification).
 Bloquants : Aucun cote code. Trouve un probleme de CALIBRATION (pas un bug) : les 4 balises "points de controle" de Koja sont a >4.5m du corridor de test de replanification (hors du rayon de detection de 2.0m) — inutilisables telles quelles pour ce scenario. Balises dediees definies le long du corridor a la place (documente dans le fichier).
-Decisions : Ne modifie ni `sensors/lidar.py` ni `security/` (toujours des stubs, hors de portee) — nouveau module entierement independant, n'utilise que les modules deja finis
+Decisions : Ne modifie pas `security/` (toujours des stubs, hors de perimetre) — nouveau module entierement independant, n'utilise que les modules deja finis
+Jour 5 — Capteurs lidar et cameras (sensor tombe sur ce role)
+Fait : Implemente `sensors/lidar.py` (LidarSensor, scan 360 deg par intersection rayon/rectangle, methode des slabs) et `sensors/cameras.py` (Camera frontale + surveillance, champ de vision/portee). 9 tests avec geometrie verifiee a la main. Branche reellement le lidar dans `demo_safety.py`, `campagne_localisation.py` et `gui/safety_app.py` : `obstacle_distance` n'est plus simule en dur, vient du capteur.
+Bloquants : Aucun
+Decisions : `Camera.observe()` produit un contrat de donnees ({"x","y","distance","angle_deg","camera"}) documente pour `security/intrusion_detector.py`, sans implementer ce dernier (hors de perimetre, toujours sans responsable) — pret a brancher quand quelqu'un le reprendra
 Resultat notable : avec la config actuelle (`LOCALIZATION_PROCESS_NOISE=0.05`), l'incertitude dérive jusqu'au seuil meme SANS perte de balise sur un trajet de 15-20m — a signaler au groupe pour recalibration (voir "Constat de calibration" en Phase 5)
 Interface publique de mes modules
 SafetyManager
@@ -140,7 +144,7 @@ sauvegarder({"astar": resultats}, {"astar": resume})
 Points d'attention pour l'integration (Dally)
 `SafetyManager.check()` doit etre appele avant `command_fn` dans la boucle (comme `on_safety` dans `simulation/simulator.py`), pour que `robot.emergency_stop()` prenne effet sur le pas courant
 Ne jamais appeler `robot.resume()` directement depuis un autre module — toujours passer par `resume_si_possible()`, pour garder la decision de reprise centralisee
-`obstacle_distance=None` declenche systematiquement un arret par prudence (capteur indisponible) — a garder en tete tant que `sensors/lidar.py` n'est pas implemente
+`obstacle_distance` vient maintenant d'un vrai `LidarSensor` (voir `sensors/lidar.py`) — `None` (capteur indisponible) declenche toujours un arret par prudence
 Notes de collaboration
 Interface avec les autres roles
 Role 1 (Malala — Cinematique) : ✅ Aucune dependance bloquante — `robot.emergency_stop()`/`resume()` deja disponibles et stables, utilises tels quels
@@ -161,5 +165,8 @@ Fichier	Role	Description
 `experiments/demo_safety.py`	Nouveau	Demo visuelle (graphique) du SafetyManager
 `gui/safety_app.py`	Nouveau	Interface Tkinter interactive de test du SafetyManager
 `experiments/campagne_localisation.py`	Nouveau	Erreur de localisation + cas limite perte de balise (localisation reelle)
+`sensors/lidar.py`	Nouveau (stub -> implementation, tombe sur ce role)	LidarSensor, scan 360 deg
+`sensors/cameras.py`	Nouveau (stub -> implementation, tombe sur ce role)	Camera frontale + surveillance
+`tests/test_sensors.py`	Nouveau	9 tests (lidar + cameras)
 `results/features_experimentation/`	Nouveau	Resultats agreges (CSV + resume texte, campagnes essais + localisation)
 `TINO_WORKFLOW.md`	Nouveau (ex ROLE5_WORKFLOW.md)	Ce fichier

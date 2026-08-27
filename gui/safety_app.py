@@ -37,6 +37,7 @@ import config
 from robot.robot import Robot
 from gui.robot_view import RobotView
 from safety.safety_manager import SafetyManager, EtatSurete
+from sensors.lidar import LidarSensor
 
 
 def clamp(value, vmin, vmax):
@@ -63,6 +64,7 @@ class SafetyDemoGUI(tk.Tk):
 
         self.robot = Robot(initial_pose=(2.0, 7.5, 0.0))
         self.sm = SafetyManager(tentatives_max_replanification=3)
+        self.lidar = LidarSensor(self.robot, obstacles=[OBSTACLE_FIXE])  # LIAISON : vrai capteur
         self.running = False
         self.dt_ms = max(1, int(config.DT * 1000))
 
@@ -197,9 +199,11 @@ class SafetyDemoGUI(tk.Tk):
         self.obstacle_patch.set_visible(self.obstacle_visible)
         if self.obstacle_visible:
             self.path_found_var.set(False)  # coherent : l'obstacle bloque tout le couloir
+            self.lidar.update_obstacles([OBSTACLE_FIXE, OBSTACLE_IMPREVU])  # LIAISON : lidar voit l'obstacle
             self.status_bar.config(text="Obstacle imprévu apparu — le couloir est totalement bloqué.")
         else:
             self.path_found_var.set(True)
+            self.lidar.update_obstacles([OBSTACLE_FIXE])
             self.status_bar.config(text="Obstacle imprévu retiré.")
         self.canvas.draw_idle()
 
@@ -230,6 +234,7 @@ class SafetyDemoGUI(tk.Tk):
         self.capteur_indispo_var.set(False)
         self.obstacle_visible = False
         self.obstacle_patch.set_visible(False)
+        self.lidar.update_obstacles([OBSTACLE_FIXE])
         self.view.reset_trail()
         self.journal_box.delete(0, tk.END)
         self.canvas.draw_idle()
@@ -249,7 +254,7 @@ class SafetyDemoGUI(tk.Tk):
             incertitude, distance = None, None
         else:
             incertitude = self.incertitude_var.get()
-            distance = 2.0 if not self.obstacle_visible else 0.3
+            distance = self.lidar.min_distance()  # LIAISON : vraie mesure, plus une heuristique
 
         n_avant = len(self.sm.journal)
         etat = self.sm.check(

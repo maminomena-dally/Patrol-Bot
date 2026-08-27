@@ -38,6 +38,7 @@ from sensors.landmarks import LandmarkDetector
 from localization.localization import Localizer
 from control.pure_pursuit import PurePursuitController
 from safety.safety_manager import SafetyManager, EtatSurete
+from sensors.lidar import LidarSensor
 from experiments.run_experiments import (
     PATROL_WAYPOINTS,
     _make_planner,
@@ -96,6 +97,7 @@ def executer_essai(planner_name="astar", perte_balise=False, duree_perte=3.0, ve
     localizer = Localizer(initial_pose=(START[0], START[1], 0.0))
     controller = PurePursuitController()
     sm = SafetyManager(tentatives_max_replanification=3)
+    lidar = LidarSensor(robot, obstacles=INITIAL_OBSTACLES)  # LIAISON : vrai capteur
 
     grid = create_test_grid(config.WORLD_WIDTH, config.WORLD_HEIGHT,
                              config.GRID_RESOLUTION, INITIAL_OBSTACLES)
@@ -134,6 +136,7 @@ def executer_essai(planner_name="astar", perte_balise=False, duree_perte=3.0, ve
         if robot.time >= OBSTACLE_TIME and not obstacle_apparu:
             obstacle_apparu = True
             all_obstacles = INITIAL_OBSTACLES + [UNEXPECTED_OBSTACLE]
+            lidar.update_obstacles(all_obstacles)  # LIAISON : le lidar voit l'obstacle des son apparition
             grid_updated = create_test_grid(config.WORLD_WIDTH, config.WORLD_HEIGHT,
                                              config.GRID_RESOLUTION, all_obstacles)
             planner_replan = _make_planner(planner_name, grid_updated,
@@ -148,7 +151,7 @@ def executer_essai(planner_name="astar", perte_balise=False, duree_perte=3.0, ve
 
         # -- SafetyManager avec la VRAIE incertitude de localisation --
         etat = sm.check(robot, localization_uncertainty=localizer.uncertainty,
-                         obstacle_distance=2.0, path_found=path_found)
+                         obstacle_distance=lidar.min_distance(), path_found=path_found)
 
         if etat == EtatSurete.ARRET_SUR:
             if verbose:
