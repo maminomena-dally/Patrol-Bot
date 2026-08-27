@@ -153,11 +153,12 @@ class IntrusionDetector:
                 self._last_alert_time = current_time
 
         # 6) Journaliser
+        robot_x, robot_y, robot_theta = self.robot.get_true_pose()
         self._history.append({
             "time": current_time,
-            "robot_x": self.robot.x,
-            "robot_y": self.robot.y,
-            "robot_theta": self.robot.theta,
+            "robot_x": robot_x,
+            "robot_y": robot_y,
+            "robot_theta": robot_theta,
             "intrusion_detected": intrusion_confirmed,
             "num_intruders": len(unique),
             "num_alerts": len(self._active_alerts),
