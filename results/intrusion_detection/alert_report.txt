@@ -1,0 +1,22 @@
+============================================================
+  RAPPORT — GESTION DES ALERTES
+============================================================
+
+Date      : 2026-08-27 17:26
+Scenario  : Intrus a distance variable
+Durée     : 22.0 s
+
+--- Seuils de classification ---
+  WARNING : d <= 4.0 m
+  DANGER  : d <= 2.0 m
+  Resolution delay : 1.0 s
+
+--- Distribution des niveaux ---
+  NOMINAL :   30 (13.6%)
+  INFO    :   92 (41.8%)
+  WARNING :   51 (23.2%)
+  DANGER  :   47 (21.4%)
+  Total   :  220
+
+  Distance minimale atteinte : 1.00 m
+  Evenements DANGER (uniques)  : 47
