@@ -813,4 +813,3 @@ if __name__ == "__main__":
 
     results = scenario_comparaison(verbose=True)
     print("\nFin des experiences.")
-

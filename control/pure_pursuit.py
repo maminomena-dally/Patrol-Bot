@@ -1,11 +1,3 @@
-"""
-Principe :
-    1. Trouver le lookahead point sur le chemin.
-    2. Calculer alpha = angle entre cap robot et direction cible.
-    3. omega = (v / Ld) * sin(alpha) ou Ld = distance au point cible.
-    4. Renvoyer (v_cruise, omega).
-"""
-
 import math
 from typing import List, Optional, Tuple
 
@@ -17,7 +9,14 @@ Pose = Tuple[float, float, float]
 
 
 class PurePursuitController:
-    """Controleur Pure Pursuit pour le suivi de trajectoire."""
+    """Controleur Pure Pursuit pour le suivi de trajectoire.
+
+    Principe (slide 26 du cours Dr Randria) :
+        1. Trouver le lookahead point sur le chemin.
+        2. Calculer alpha = angle entre cap robot et direction cible.
+        3. omega = (v / Ld) * sin(alpha) ou Ld = distance au point cible.
+        4. Renvoyer (v_cruise, omega).
+    """
 
     def __init__(
         self,

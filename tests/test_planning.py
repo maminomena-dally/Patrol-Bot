@@ -600,4 +600,3 @@ class TestPurePursuitIntegration(unittest.TestCase):
         dist = math.sqrt((px - 8.0)**2 + (py - 8.0)**2)
         self.assertLessEqual(dist, 0.20,
             f"Robot a {dist:.3f} m du but apres 60s (RRT)")
-
