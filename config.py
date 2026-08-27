@@ -16,6 +16,12 @@ ROBOT_RADIUS = 0.18        # m — rayon du châssis (disque), pour la géométr
 WHEEL_BASE = 0.35          # m — entraxe L entre les deux roues motrices (paramètre libre, section 8)
 WHEEL_RADIUS = 0.05        # m — rayon d'une roue (utile si un jour on pilote en oméga_roue)
 
+# Voir les nouveaux commits dans main
+git log --oneline HEAD..origin/main
+
+# Voir les fichiers modifiés
+git diff HEAD..origin/main --name-only
+
 # ----------------------------------------------------------------------
 # Limites cinématiques (section 9)
 # ----------------------------------------------------------------------
