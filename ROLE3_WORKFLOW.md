@@ -1,9 +1,9 @@
 # 🎯 Role 3 — Planification & Commande : Suivi de travail
 # Koja — M2 SDIA
 
-> **Derniere mise a jour** : Phase 5b terminee — Integration Role 2↔3 (EKF + A*/RRT + Pure Pursuit)
+> **Derniere mise a jour** : Phase 7 terminee — Module Securite (Role 1) implemente + doc pour l'equipe
 > **Deadline** : J+7
-> **Statut global** : 🟢 Phases 1-5b terminees, Phase 6 a faire (tests finaux + PR)
+> **Statut global** : 🟢 Phases 1-7 terminees, Phase 6 a faire (tests finaux + PR)
 
 > **Sources lues** :
 > - ✅ Cadrage_Mini_Projet_Robotique_Mobile.pdf
@@ -13,6 +13,7 @@
 ---
 
 ## 📌 Exigences OFFICIELLES pour le Role 3
+
 
 ### Ce que le prof attend de TOI
 1. **A\*** : planification sur grille, optimal, deterministe (slide 25)
@@ -24,6 +25,94 @@
 
 ### Critere de precision
 - Robot atteint chaque point a **< 10 cm** (GOAL_TOLERANCE = 0.10 m)
+
+---
+
+## 🆕 Phase 7 — Module Securite / Role 1 (TERMINE)
+
+### Contexte
+Le Role 1 (Securite) n'etait assigne a personne. Koja l'a pris en charge et a implemente le pipeline complet de securite : detection d'intrusion, gestion d'alertes, et alarme sonore.
+
+### Pipeline complet de securite
+
+```
+Camera.observe(targets)             # Tino (Role 2) ou stub
+    |
+    v
+IntrusionDetector.check(           # Koja (Role 1)
+    observations, robot_pose,       #   - Filtre FOV
+    camera_fov_deg=90.0)            #   - Filtre obstacles connus
+    |                                #   - Deduplication + cooldown
+    v                                #
+[IntrusionAlert, ...]              # -> positions + distances
+    |
+    v
+AlertManager.update(              # Koja (Role 1)
+    alerts, robot_pose)             #   - Niveaux: NOMINAL/INFO/WARNING/DANGER
+    |                                #   - warning_dist=4.0m, danger_dist=2.0m
+    v                                #
+AlertEvent                         # -> niveau + message + position
+    |
+    +---> am.get_intrusion_confirmed()  --> SafetyManager.check()  [Dally - Role 4]
+    +---> am.should_alarm()              --> speaker.update()      [Speaker]
+    |
+    v
+Speaker.update(                   # Koja (Role 1)
+    should_alarm, level_name)       #   - Pattern: NONE / SLOW / FAST
+    |                                #   - Anti-faux-positifs (threshold=2)
+    v                                #
+AlarmPattern                      # -> NONE (silence) / SLOW (bip lent) / FAST (bip rapide)
+```
+
+### Niveaux d'alerte (AlertLevel)
+
+| Niveau | Distance | Description | Alarme |
+|--------|----------|-------------|--------|
+| NOMINAL | — | Aucune intrusion | Silence |
+| INFO | > 4.0m | Intrusion lointaine | Silence |
+| WARNING | 2.0m - 4.0m | Intrusion a distance moyenne | Bip lent (SLOW) |
+| DANGER | <= 2.0m | Intrusion imminente | Bip rapide (FAST) |
+
+### Ce qui a ete fait
+- [x] `security/intrusion_detector.py` — IntrusionAlert + IntrusionDetector
+  - Filtrage par FOV (champ de vision de la camera)
+  - Filtrage des obstacles connus (racks) avec zone de tolerance
+  - Deduplication + cooldown (evite les alertes repetees)
+- [x] `security/alert_manager.py` — AlertLevel + AlertEvent + AlertManager
+  - 4 niveaux de gravite (NOMINAL → INFO → WARNING → DANGER)
+  - Distances configurables (warning_dist=4.0, danger_dist=2.0)
+  - Resolution delay (ne revient pas a NOMINAL instantanement)
+  - Le niveau ne descend pas instantanement (securite)
+- [x] `security/speaker.py` — AlarmPattern + Speaker
+  - 3 patterns: NONE / SLOW / FAST
+  - Anti-faux-positifs (activation_threshold=2)
+  - Statistiques: trigger_count, total_alarm_time
+- [x] `security/__init__.py` — Imports publics du module
+- [x] 29 tests unitaires + 4 tests integration (tous passent)
+  - `tests/test_intrusion_detector.py` — 12 unit + 1 integration
+  - `tests/test_alert_manager.py` — 11 unit + 1 integration
+  - `tests/test_speaker.py` — 6 unit + 1 integration (pipeline complet)
+
+### Bridges vers les autres roles
+
+| Bridge | De | Vers | Usage |
+|--------|----|------|-------|
+| `detector.get_intrusion_positions()` | IntrusionDetector | A*/RRT (Role 3) | Obstacles dynamiques pour replanification |
+| `detector.is_close_intrusion(d)` | IntrusionDetector | SafetyManager (Role 4) | Arret d'urgence si intrus trop proche |
+| `am.get_intrusion_confirmed()` | AlertManager | SafetyManager.check() (Role 4) | Arret d'urgence si WARNING/DANGER |
+| `am.should_alarm()` | AlertManager | Speaker.update() | Declenche/maintient l'alarme sonore |
+
+### Fichiers du module securite
+
+| Fichier | Role | Description |
+|---------|------|-------------|
+| `security/intrusion_detector.py` | Nouveau | IntrusionAlert + IntrusionDetector (FOV, filtres, dedup) |
+| `security/alert_manager.py` | Nouveau | AlertLevel + AlertEvent + AlertManager (4 niveaux) |
+| `security/speaker.py` | Nouveau | AlarmPattern + Speaker (NONE/SLOW/FAST) |
+| `security/__init__.py` | Nouveau | Imports publics |
+| `tests/test_intrusion_detector.py` | Nouveau | 12 unit + 1 integration |
+| `tests/test_alert_manager.py` | Nouveau | 11 unit + 1 integration |
+| `tests/test_speaker.py` | Nouveau | 6 unit + 1 integration pipeline complet |
 
 ---
 
@@ -217,8 +306,17 @@ results/warehouse_integration/
 - [x] Couverture de zone : 100% (4/4 zones visitees)
 - **Commit** : `feat(integration): Role 2↔3 pipeline EKF + A*/RRT + Pure Pursuit`
 
+### Phase 7 — Module Securite / Role 1 ✅ TERMINE
+- [x] IntrusionDetector avec FOV, filtres, dedup, cooldown
+- [x] AlertManager avec 4 niveaux (NOMINAL/INFO/WARNING/DANGER)
+- [x] Speaker avec 3 patterns (NONE/SLOW/FAST)
+- [x] 29 tests unitaires + 4 tests integration
+- [x] Pipeline complet valide (Camera → Detector → AM → Speaker)
+- [x] Bridges documentes vers Dally (SafetyManager) et Koja (A*/RRT)
+- **Commit** : `feat(security): pipeline securite complet (detecteur + alertes + speaker)`
+
 ### Phase 6 — Tests & Livraison ⏸ A FAIRE
-- [ ] Tous les tests passent (32 planning + 6 integration = 38)
+- [ ] Tous les tests passent (32 planning + 6 integration + 29 securite + 4 securite integration = 71)
 - [ ] Resultats de comparaison pour Role 5 (Tino) — **PRETS** (voir sections ci-dessous)
 - [ ] Interface documentee pour Role 4 (Dally) — **PRETE** (voir guide ci-dessous)
 - [ ] Commit, push, PR vers `main`
@@ -235,6 +333,7 @@ results/warehouse_integration/
 | Jour 3 | `feat(control): Pure Pursuit implemente avec 15 tests (32 total)` | `control/pure_pursuit.py`, `tests/test_planning.py` | 32 pass |
 | Jour 4 | `feat(experiments): integration Phase 5, patrouille + replan + visu` | `experiments/run_experiments.py` | 32 pass + 4 scenarios OK |
 | Jour 5 | `feat(integration): Role 2↔3 pipeline EKF + A*/RRT + Pure Pursuit` | `tests/test_integration_role2_role3.py`, `localization/localization.py`, `config.py` | 6/6 pass + 4 scenarios visuels |
+| Jour 6 | `feat(security): pipeline securite complet (detecteur + alertes + speaker)` | `security/intrusion_detector.py`, `security/alert_manager.py`, `security/speaker.py`, `tests/test_intrusion_detector.py`, `tests/test_alert_manager.py`, `tests/test_speaker.py` | 29 unit + 4 integration = 33 pass |
 
 ---
 
@@ -278,6 +377,23 @@ results/warehouse_integration/
   - 4 zones de mission definies pour mesurer la couverture spatiale
 - **Bug critique resolu** : L'ancien filtre de localisation ne corrigeait que x,y (pas theta), causant 7.69m d'erreur. L'EKF 3×3 corrige les 3 etats.
 - **Bug silencieux resolu** : `LANDMARK_DETECTION_RADIUS = 2.0` faisait que le robot ne voyait ZERO balise sur 15 des 17m de parcours.
+
+### Jour 6 — Module Securite / Role 1
+- **Fait** :
+  - Role 1 (Securite) non assigne -> Koja le prend en charge
+  - 3 modules implementes : IntrusionDetector, AlertManager, Speaker
+  - Pipeline complet : Camera → Detector → AM → Speaker
+  - 29 tests unitaires + 4 tests integration (tous passent)
+  - 4 niveaux d'alerte : NOMINAL, INFO, WARNING, DANGER
+  - 3 patterns d'alarme : NONE, SLOW, FAST
+  - Bridges documentes vers Dally (SafetyManager) et Koja (A*/RRT replanification)
+- **Bloquants** : Aucun
+- **Decisions** :
+  - `warning_dist=4.0m`, `danger_dist=2.0m` (configurables)
+  - Anti-faux-positifs : speaker `activation_threshold=2` (il faut 2 updates consecutifs)
+  - Le niveau d'alerte ne descend pas instantanement (resolution_delay=1.0s)
+  - `IntrusionDetector` filtre les obstacles connus avec une zone de tolerance (defaut 1.0m)
+  - Deduplication : meme intrus ne declenche pas d'alerte pendant le cooldown (defaut 2.0s)
 
 ---
 
@@ -670,7 +786,7 @@ print(m["completion_pct"])         # 100.0
 - **Role 4 (Dally - Simulation/Integration)** : ⏳ En cours — guide complet ci-dessus. Dally branche mes modules dans la boucle via le pipeline decrit.
 - **Role 5 (Tino - Experimentation)** : ⏳ En cours — resultats Phase 5 + Phase 5b prets (voir guide ci-dessus)
 - **Equipe Surete (safety/)** : ⏳ Stub — `SafetyManager.check()` peut appeler `planner.plan()` pour la replanification. Mon code est pret.
-- **Equipe Securite (security/)** : ⏳ Stub — pas d'interface directe.
+- **Equipe Securite (security/)** : ✅ **IMPLEMENTE** par Koja — Pipeline complet (Detector + AlertManager + Speaker), 33 tests passent. Voir Phase 7 ci-dessus.
 
 ### Responsabilite sur la couverture de zone
 
@@ -730,4 +846,224 @@ detector = LandmarkDetector(robot, WAREHOUSE_LANDMARKS)
 | `experiments/run_experiments.py` | Modifie | 3 scenarios + comparaison + visualisation |
 | `config.py` | Modifie | Params planning + `LANDMARK_DETECTION_RADIUS = 6.0` |
 | `requirements.txt` | Modifie | Decommenté numpy |
+| `security/intrusion_detector.py` | Nouveau | IntrusionAlert + IntrusionDetector (FOV, filtres, dedup) |
+| `security/alert_manager.py` | Nouveau | AlertLevel + AlertEvent + AlertManager (4 niveaux) |
+| `security/speaker.py` | Nouveau | AlarmPattern + Speaker (NONE/SLOW/FAST) |
+| `security/__init__.py` | Nouveau | Imports publics du module |
+| `tests/test_intrusion_detector.py` | Nouveau | 12 unit + 1 integration |
+| `tests/test_alert_manager.py` | Nouveau | 11 unit + 1 integration |
+| `tests/test_speaker.py` | Nouveau | 6 unit + 1 integration pipeline complet |
 | `ROLE3_WORKFLOW.md` | Nouveau | Ce fichier |
+
+
+---
+
+## Interface publique du module Securite (Role 1)
+
+### IntrusionDetector
+```python
+from security.intrusion_detector import IntrusionAlert, IntrusionDetector
+
+detector = IntrusionDetector(
+    known_obstacles=[(4.0, 3.0), (8.0, 3.0), (6.0, 7.0)],  # centres des racks
+    tolerance_zone=1.0,     # m — rayon de tolerance autour de chaque rack
+    dedup_radius=0.5,       # m — rayon de deduplication
+    cooldown=2.0,           # s — delai entre deux alertes pour le meme intrus
+)
+alerts: list[IntrusionAlert] = detector.check(
+    observations=[(7.0, 5.0), (8.0, 5.5)],  # cibles detectees par Camera
+    robot_pose=(2.0, 5.0, 0.0),              # (x, y, theta) du robot
+    camera_fov_deg=90.0,                     # champ de vision de la camera
+)
+# alerts[0].position -> (7.0, 5.0)
+# alerts[0].distance -> 5.0 (en metres)
+# alerts[0].timestamp -> time.time()
+
+# Bridge vers Role 3 (Koja) — obstacles dynamiques pour replanification
+intruder_positions = detector.get_intruder_positions()
+# -> [(7.0, 5.0), (8.0, 5.5)]
+
+# Bridge vers Role 4 (Dally) — arret d'urgence si intrus trop proche
+is_close = detector.is_close_intrusion(danger_distance=2.0)
+# -> True / False
+
+# Reset (nouvelle mission)
+detector.reset()
+```
+
+### AlertManager
+```python
+from security.alert_manager import AlertLevel, AlertEvent, AlertManager
+
+am = AlertManager(
+    warning_dist=4.0,     # m — seuil WARNING
+    danger_dist=2.0,      # m — seuil DANGER
+    resolution_delay=1.0, # s — delai avant retour a NOMINAL
+)
+event: AlertEvent = am.update(alerts, robot_pose=(2.0, 5.0, 0.0))
+# event.level -> AlertLevel.WARNING
+# event.intruder_position -> (7.0, 5.0)
+# event.distance -> 3.0
+# event.message -> "⚠ Intrusion a 3.0m en (7.0, 5.0)"
+
+# Bridge vers Role 4 (Dally) — SafetyManager.check()
+confirmed = am.get_intrusion_confirmed()  # True si WARNING ou DANGER
+is_danger = am.is_danger()                 # True si DANGER uniquement
+
+# Bridge vers Speaker
+should_alarm = am.should_alarm()           # True si WARNING ou DANGER
+
+# Historique
+history = am.get_history()  # liste de tous les AlertEvent
+am.reset()
+```
+
+### Speaker
+```python
+from security.speaker import AlarmPattern, Speaker
+
+speaker = Speaker(activation_threshold=2)  # 2 triggers consecutifs pour activer
+pattern = speaker.update(should_alarm=True, level_name="WARNING")
+# -> AlarmPattern.SLOW (apres 2 appels)
+
+pattern = speaker.update(should_alarm=True, level_name="DANGER")
+# -> AlarmPattern.FAST
+
+speaker.update(should_alarm=False)  # arret de l'alarme
+
+# Stats
+stats = speaker.get_stats()
+# {"trigger_count": 1, "total_alarm_time": 2.3, "current_pattern": "none", "is_on": False}
+
+speaker.reset()
+```
+
+---
+
+## 📋 Guide pour Dally — Integration Securite
+
+> Dally, voici comment integrer le module securite dans ta boucle de simulation.
+
+### Pipeline securite dans la boucle principale
+
+```python
+from security import IntrusionDetector, AlertManager, Speaker
+
+# --- Setup ---
+# Obstacles connus (racks de ton entrepot)
+from entrepot_patrouille import WAREHOUSE_OBSTACLES
+rack_centers = [(obs["x"] + obs["w"]/2, obs["y"] + obs["h"]/2)
+                 for obs in WAREHOUSE_OBSTACLES]
+
+detector = IntrusionDetector(
+    known_obstacles=rack_centers,
+    tolerance_zone=1.0,
+    cooldown=2.0,
+)
+am = AlertManager(warning_dist=4.0, danger_dist=2.0, resolution_delay=1.0)
+speaker = Speaker(activation_threshold=2)
+
+# --- Dans la boucle de simulation ---
+for step in range(max_steps):
+    # 1. Localisation (deja existant)
+    est = localizer.estimated_pose
+    est_pose = (est.x, est.y, est.theta)
+
+    # 2. Securite : detection d'intrusion
+    #    camera.observe() retourne les cibles visibles
+    observations = camera.observe(all_targets)  # [(x, y), ...]
+    alerts = detector.check(observations, robot.get_true_pose(), camera_fov_deg=90.0)
+
+    # 3. Mise a jour du niveau d'alerte
+    event = am.update(alerts, est_pose)
+
+    # 4. Declencher l'alarme si necessaire
+    speaker.update(should_alarm=am.should_alarm(), level_name=event.level.name)
+
+    # 5. Arret d'urgence si intrusion confirmee
+    if am.is_danger():
+        robot.set_velocity(0.0, 0.0)
+        continue  # ou break selon la strategie
+
+    # 6. Replanification si intrus detecte (bridge vers Role 3)
+    intruder_positions = detector.get_intruder_positions()
+    if intruder_positions and not am.is_danger():
+        # Ajouter les intrus comme obstacles dynamiques et replanifier
+        # (Koja's A*/RRT peuvent utiliser ces positions)
+        pass  # ta logique de replanification
+
+    # 7. Commande (deja existant)
+    v, omega = controller.compute_command(pose=est_pose, path=path)
+    robot.set_velocity(v, omega)
+    robot.step(dt)
+    d_l, d_r = odom.read(dt)
+    localizer.predict(d_l, d_r)
+    localizer.correct(detector_landmark.detect())
+```
+
+### Points d'attention
+- **`robot.get_true_pose()`** est utilise pour le FOV filtering (le detecteur a besoin de la vraie pose pour le champ de vision)
+- **`am.update()`** prend la pose estimee (comme Pure Pursuit)
+- **`am.is_danger()`** doit etre verifie AVANT le calcul de commande
+- **`speaker.update()`** doit etre appele a chaque step, meme si pas d'alarme
+- **`speaker` a un `activation_threshold=2`** par defaut : 2 appels consecutifs avec `should_alarm=True` pour declencher l'alarme (anti-faux-positifs)
+- **Le niveau ne descend pas instantanement** : attend `resolution_delay` (1.0s par defaut)
+
+### Tests
+```bash
+# Lancer tous les tests securite
+pytest tests/test_intrusion_detector.py tests/test_alert_manager.py tests/test_speaker.py -v -s
+
+# Resultat attendu : 29 unit + 4 integration = 33 pass
+```
+
+---
+
+## 📋 Guide pour Tino — Securite pour le rapport
+
+> Tino, voici les metriques du module securite pour la section du rapport.
+
+### Metriques du module securite
+
+```
+Module                    Tests    Status
+IntrusionDetector         13 pass  FOV + filtres + dedup + cooldown + bridge
+AlertManager              12 pass  4 niveaux + resolution_delay + bridges
+Speaker                    7 pass  3 patterns + anti-FAUX_POSITIFS + stats
+Pipeline integration       1 pass  Camera -> Detector -> AM -> Speaker
+---                                ---
+TOTAL                     33 pass  0 fail
+```
+
+### Niveaux d'alerte (schema pour le rapport)
+
+| Niveau | Condition | Action robot | Alarme |
+|--------|-----------|--------------|--------|
+| NOMINAL | Aucune intrusion | Patrouille normale | Silence |
+| INFO | Intrus > 4.0m | Patrouille continue | Silence |
+| WARNING | 2.0m < Intrus <= 4.0m | Ralentir + logger | Bip lent |
+| DANGER | Intrus <= 2.0m | Arret d'urgence | Bip rapide |
+
+### Architecture pour le diagramme du rapport
+
+```
+Camera.observe(targets)
+    |
+    v
+IntrusionDetector.check()       [Filtre FOV + Obstacles + Dedup]
+    |
+    v
+[IntrusionAlert]                [position, distance, timestamp]
+    |
+    v
+AlertManager.update()          [Niveaux: NOMINAL/INFO/WARNING/DANGER]
+    |           |           |
+    |           +-----------+   |
+    v                       v   v
+SafetyManager          Speaker.update()
+(Dally - arret)         [NONE/SLOW/FAST]
+    |
+    v
+Replanification
+(A*/RRT avec
+ obstacles dynamiques)

@@ -1,0 +1,24 @@
+============================================================
+  RAPPORT — PIPELINE SECURITE COMPLET
+============================================================
+
+Date      : 2026-08-27 17:41
+Scenario  : Patrouille + 2 intrus (pipeline 3 modules)
+  Module 1 : IntrusionDetector (cameras)
+  Module 2 : AlertManager (classification)
+  Module 3 : Speaker (alarme)
+
+--- Pipeline ---
+  Verifications totales  : 1201
+  Intrusion detectee     : 512 (42.6%)
+  Niveau DANGER          : 40 (3.3%)
+  Alarme activee         : 40 (3.3%)
+  Distance min intrus    : 1.67 m
+  Alarmes declenchees     : 1
+  Temps total d'alarme    : 1.9 s
+
+--- Niveaux d'alerte ---
+  nominal    :  648 (54.0%)
+  info       :  248 (20.6%)
+  warning    :  265 (22.1%)
+  danger     :   40 (3.3%)
