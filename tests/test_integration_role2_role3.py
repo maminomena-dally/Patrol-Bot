@@ -1170,9 +1170,10 @@ def main():
     print("\n[4] Blocage extrême (couloir fermé)...")
     m, robot_ext, ext_obs, safety_hist_ext, ext_orig_path = scenario_extreme_blockage("astar", verbose=True)
     all_metrics["extreme_blockage"] = m
+    statut_blocage = "ARRET_SUR déclenché" if m["safety_triggered"] else "Pas d'arrêt"
     plot_result(
         robot_ext.history, WAREHOUSE_OBSTACLES, PATROL_WAYPOINTS, LANDMARKS,
-        f"Blocage extrême — {'ARRET_SUR déclenché' if m['safety_triggered'] else 'Pas d\'arrêt'}",
+        f"Blocage extrême — {statut_blocage}",
         os.path.join(RESULTS_DIR, "extreme_blockage.png"),
         extra_obstacles=[ext_obs],
         safety_history=safety_hist_ext,

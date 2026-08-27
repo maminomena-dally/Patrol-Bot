@@ -110,11 +110,11 @@ class TestLocalizer(unittest.TestCase):
 
     def test_predict_augmente_incertitude(self):
         localizer = Localizer(initial_pose=(0.0, 0.0, 0.0))
-        self.assertEqual(localizer.uncertainty, 0.0)
+        incertitude_initiale = localizer.uncertainty
 
         localizer.predict(d_left=0.5, d_right=0.5)
 
-        self.assertGreater(localizer.uncertainty, 0.0)
+        self.assertGreater(localizer.uncertainty, incertitude_initiale)
 
     def test_correct_sans_balise_ne_change_rien(self):
         localizer = Localizer(initial_pose=(0.0, 0.0, 0.0))
