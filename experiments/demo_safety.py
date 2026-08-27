@@ -29,6 +29,7 @@ from experiments.run_experiments import (
     _ensure_dir,
 )
 from safety.safety_manager import SafetyManager, EtatSurete
+from sensors.lidar import LidarSensor
 
 
 # Reprend exactement la geometrie du cas limite "couloir bloque"
@@ -54,6 +55,7 @@ def rejouer_avec_surete(planner_name="astar", verbose=True):
     robot = Robot(initial_pose=(START[0], START[1], 0.0))
     controller = PurePursuitController()
     sm = SafetyManager(tentatives_max_replanification=3)
+    lidar = LidarSensor(robot, obstacles=INITIAL_OBSTACLES)  # LIAISON : vrai capteur
 
     grid = create_test_grid(config.WORLD_WIDTH, config.WORLD_HEIGHT,
                              config.GRID_RESOLUTION, INITIAL_OBSTACLES)
@@ -74,6 +76,7 @@ def rejouer_avec_surete(planner_name="astar", verbose=True):
         if robot.time >= OBSTACLE_TIME and not obstacle_apparu:
             obstacle_apparu = True
             all_obstacles = INITIAL_OBSTACLES + [UNEXPECTED_OBSTACLE]
+            lidar.update_obstacles(all_obstacles)  # LIAISON : le lidar voit l'obstacle des son apparition
             grid_updated = create_test_grid(config.WORLD_WIDTH, config.WORLD_HEIGHT,
                                              config.GRID_RESOLUTION, all_obstacles)
             planner_replan = _make_planner(planner_name, grid_updated,
@@ -97,7 +100,7 @@ def rejouer_avec_surete(planner_name="astar", verbose=True):
 
         # -- SafetyManager verifie la situation a CE pas --
         etat = sm.check(robot, localization_uncertainty=0.05,
-                         obstacle_distance=2.0, path_found=path_found)
+                         obstacle_distance=lidar.min_distance(), path_found=path_found)
         historique_surete.append((robot.time, px, py, etat.name))
 
         if etat == EtatSurete.ARRET_SUR:
