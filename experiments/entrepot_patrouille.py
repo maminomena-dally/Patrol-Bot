@@ -63,3 +63,28 @@ WAREHOUSE_WAYPOINTS = [
     (7.5, 12.0),   # WP7 : retour fond
     (1.5, 12.0),   # WP8 : retour quai
 ]
+
+# Balises pour localisation EKF (Role 2)
+# Placees le long des murs et dans les allées pour couvrir le parcours de patrouille.
+# Chaque balise est a portee (LANDMARK_DETECTION_RADIUS = 6.0m) d'au moins un segment
+# du chemin entre deux waypoints consecutifs.
+# Schema :
+#   LM0----LM1----LM2     (mur sud, y~0.4)
+#   |               |
+#   LM3    LM4    LM5     (centre allées)
+#   |               |
+#   LM6----LM7----LM8     (mur nord, y~14.5)
+WAREHOUSE_LANDMARKS = [
+    # --- Mur sud (y=0.4) — couvre zone quai et allées basses ---
+    {"id": 0, "x":  2.0, "y": 0.4},   # quai / WP1
+    {"id": 1, "x": 10.0, "y": 0.4},   # centre sud / transition WP2->WP3
+    {"id": 2, "x": 17.0, "y": 0.4},   # droite sud / WP5
+    # --- Centre — couvrent les allées entre les colonnes de racks ---
+    {"id": 3, "x":  3.5, "y": 5.5},   # WP2 / transition quai-allées
+    {"id": 4, "x": 10.0, "y": 5.5},   # centre / WP3-WP4
+    {"id": 5, "x": 15.0, "y": 8.5},   # droite centre / WP4-WP5
+    # --- Mur nord (y=14.5) — couvre fond de l'entrepôt ---
+    {"id": 6, "x":  3.0, "y": 14.5},  # gauche nord / WP8
+    {"id": 7, "x": 10.0, "y": 14.5},  # centre nord / WP7
+    {"id": 8, "x": 17.0, "y": 14.5},  # droite nord / WP6
+]
