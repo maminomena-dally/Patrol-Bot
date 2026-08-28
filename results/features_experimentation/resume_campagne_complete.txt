@@ -1,0 +1,28 @@
+CAMPAGNE COMPLETE -- conforme au sujet (10 essais + 3 cas limites)
+Metriques : taux de succes, temps, longueur de trajet, distance min. obstacles, erreur de localisation
+======================================================================
+
+--- ASTAR ---
+  nb_essais                   : 13
+  taux_succes                 : 0.923
+  temps_mission_moy_s         : 67.54
+  longueur_trajet_moy_m       : 32.91
+  distance_min_obstacle_m     : 0.0
+  erreur_localisation_moy_m   : 0.0253
+  erreur_localisation_max_m   : 0.2237
+  nb_arrets_surs_attendus     : 1
+  nb_arrets_surs_confirmes    : 1
+
+--- RRT ---
+  nb_essais                   : 13
+  taux_succes                 : 0.923
+  temps_mission_moy_s         : 68.86
+  longueur_trajet_moy_m       : 33.34
+  distance_min_obstacle_m     : 0.0
+  erreur_localisation_moy_m   : 0.0277
+  erreur_localisation_max_m   : 0.2254
+  nb_arrets_surs_attendus     : 1
+  nb_arrets_surs_confirmes    : 1
+
+Cas limites couverts : chemin_le_plus_court, couloir_bloque, perte_balise
+Total essais par algo : 10 nominaux + 3 cas limites
