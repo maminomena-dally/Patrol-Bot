@@ -1,0 +1,26 @@
+============================================================
+  RAPPORT — DETECTION D'INTRUSION
+============================================================
+
+Date      : 2026-08-27 17:12
+Scenario  : Patrouille entrepot + 2 intrus programmas
+Durée     : 60.0 s
+
+--- Métriques ---
+Vérifications totales    : 1201
+Pas avec intrus détecté  : 512
+Taux de détection        : 42.6%
+Nombre d'alertes émises  : 19
+  dont alertes proches    : 4
+Distance min intrus      : 1.52 m
+Première détection à     : 3.05 s
+
+--- Intrus programmés ---
+  t=3.0s  position=(6.5, 4.0)
+  t=8.0s  position=(11.0, 7.5)
+
+--- Détecteur ---
+  Caméras       : frontale (90°) + surveillance (180°, 120°)
+  Cooldown      : 1.5 s
+  Seuil proche  : 3.0 m
+  Obstacles connus : 10

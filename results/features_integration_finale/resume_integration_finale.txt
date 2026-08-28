@@ -1,0 +1,32 @@
+INTEGRATION FINALE -- Role 4 (Dally)
+Boucle complete : perception + localisation EKF + securite + surete + planification + commande
+=================================================================
+
+--- ASTAR ---
+  planner                 : astar
+  waypoints_target        : 7
+  waypoints_reached       : 7
+  success                 : True
+  mission_time            : 173.45
+  safety_final_state      : NOMINAL
+  safety_triggered        : False
+  max_loc_error           : 0.1391
+  intrusions_detected     : 666
+  max_alert_level         : warning
+  alarms_triggered        : 0
+  mean_loc_error          : 0.029
+
+--- RRT ---
+  planner                 : rrt
+  waypoints_target        : 7
+  waypoints_reached       : 7
+  success                 : True
+  mission_time            : 170.6
+  safety_final_state      : NOMINAL
+  safety_triggered        : False
+  max_loc_error           : 0.2705
+  intrusions_detected     : 584
+  max_alert_level         : warning
+  alarms_triggered        : 0
+  mean_loc_error          : 0.031
+
