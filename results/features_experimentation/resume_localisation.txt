@@ -7,54 +7,50 @@ Erreur de localisation + cas limite 'perte de balise'
   perte_balise                    : False
   duree_perte                     : 0.0
   balise_effectivement_coupee     : False
-  erreur_localisation_moy_m       : 0.7086
-  erreur_localisation_max_m       : 1.9554
-  incertitude_finale_m            : 0.5018
-  etat_surete_final               : ARRET_SUR
-  arret_sur_declenche             : True
-  temps_total_s                   : 28.15
-  journal_surete:
-    t=28.15s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+  erreur_localisation_moy_m       : 0.1368
+  erreur_localisation_max_m       : 1.3231
+  incertitude_finale_m            : 0.0226
+  etat_surete_final               : NOMINAL
+  arret_sur_declenche             : False
+  temps_total_s                   : 60.0
 
 --- ASTAR (avec perte de balise) ---
   planner                         : astar
   perte_balise                    : True
   duree_perte                     : 3.0
   balise_effectivement_coupee     : True
-  erreur_localisation_moy_m       : 0.6348
-  erreur_localisation_max_m       : 1.227
-  incertitude_finale_m            : 0.5013
-  etat_surete_final               : ARRET_SUR
-  arret_sur_declenche             : True
-  temps_total_s                   : 28.1
-  journal_surete:
-    t=28.10s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+  erreur_localisation_moy_m       : 0.0472
+  erreur_localisation_max_m       : 0.4616
+  incertitude_finale_m            : 0.0255
+  etat_surete_final               : NOMINAL
+  arret_sur_declenche             : False
+  temps_total_s                   : 60.0
 
 --- RRT (sans perte de balise) ---
   planner                         : rrt
   perte_balise                    : False
   duree_perte                     : 0.0
   balise_effectivement_coupee     : False
-  erreur_localisation_moy_m       : 0.2245
-  erreur_localisation_max_m       : 0.6631
-  incertitude_finale_m            : 0.5017
+  erreur_localisation_moy_m       : 0.095
+  erreur_localisation_max_m       : 0.8506
+  incertitude_finale_m            : 0.5013
   etat_surete_final               : ARRET_SUR
   arret_sur_declenche             : True
-  temps_total_s                   : 28.15
+  temps_total_s                   : 39.55
   journal_surete:
-    t=28.15s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+    t=39.55s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
 
 --- RRT (avec perte de balise) ---
   planner                         : rrt
   perte_balise                    : True
   duree_perte                     : 3.0
   balise_effectivement_coupee     : True
-  erreur_localisation_moy_m       : 0.7475
-  erreur_localisation_max_m       : 1.7768
-  incertitude_finale_m            : 0.5004
+  erreur_localisation_moy_m       : 0.0399
+  erreur_localisation_max_m       : 0.2583
+  incertitude_finale_m            : 0.5015
   etat_surete_final               : ARRET_SUR
   arret_sur_declenche             : True
-  temps_total_s                   : 28.05
+  temps_total_s                   : 39.8
   journal_surete:
-    t=28.05s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+    t=39.80s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
 
