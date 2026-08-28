@@ -16,8 +16,13 @@ Boucle complete : perception + localisation EKF + securite + surete + planificat
   max_loc_error           : 0.073
   mean_loc_error          : 0.0229
   journal_surete:
-    t=84.95s  NOMINAL -> ALERTE  (echec_replanification_transitoire)
-    t=85.05s  ALERTE -> ARRET_SUR  (aucun_chemin_valide)
+
+    t=43.80s  NOMINAL -> ALERTE  (intrusion_surveillee)
+    t=45.85s  ALERTE -> NOMINAL  (retour_nominal)
+    t=94.00s  NOMINAL -> ALERTE  (intrusion_surveillee)
+    t=101.15s  ALERTE -> NOMINAL  (retour_nominal)
+    t=111.10s  NOMINAL -> ALERTE  (intrusion_surveillee)
+    t=123.40s  ALERTE -> NOMINAL  (retour_nominal)
 
 --- RRT ---
   planner                 : rrt
@@ -30,6 +35,14 @@ Boucle complete : perception + localisation EKF + securite + surete + planificat
   intrusions_detected     : 642
   max_alert_level         : warning
   alarms_triggered        : 0
-  max_loc_error           : 0.203
-  mean_loc_error          : 0.0335
+  mean_loc_error          : 0.031
+  journal_surete:
+    t=44.00s  NOMINAL -> ALERTE  (intrusion_surveillee)
+    t=46.05s  ALERTE -> NOMINAL  (retour_nominal)
+    t=91.80s  NOMINAL -> ALERTE  (intrusion_surveillee)
+    t=98.95s  ALERTE -> NOMINAL  (retour_nominal)
+    t=101.20s  NOMINAL -> ALERTE  (intrusion_surveillee)
+    t=106.30s  ALERTE -> NOMINAL  (retour_nominal)
+    t=116.50s  NOMINAL -> ALERTE  (intrusion_surveillee)
+    t=122.65s  ALERTE -> NOMINAL  (retour_nominal)
 
