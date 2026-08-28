@@ -7,9 +7,9 @@ Erreur de localisation + cas limite 'perte de balise'
   perte_balise                    : False
   duree_perte                     : 0.0
   balise_effectivement_coupee     : False
-  erreur_localisation_moy_m       : 0.1368
-  erreur_localisation_max_m       : 1.3231
-  incertitude_finale_m            : 0.0226
+  erreur_localisation_moy_m       : 0.029
+  erreur_localisation_max_m       : 0.1587
+  incertitude_finale_m            : 0.0244
   etat_surete_final               : NOMINAL
   arret_sur_declenche             : False
   temps_total_s                   : 60.0
@@ -19,9 +19,9 @@ Erreur de localisation + cas limite 'perte de balise'
   perte_balise                    : True
   duree_perte                     : 3.0
   balise_effectivement_coupee     : True
-  erreur_localisation_moy_m       : 0.0472
-  erreur_localisation_max_m       : 0.4616
-  incertitude_finale_m            : 0.0255
+  erreur_localisation_moy_m       : 0.0257
+  erreur_localisation_max_m       : 0.1345
+  incertitude_finale_m            : 0.0244
   etat_surete_final               : NOMINAL
   arret_sur_declenche             : False
   temps_total_s                   : 60.0
@@ -31,26 +31,22 @@ Erreur de localisation + cas limite 'perte de balise'
   perte_balise                    : False
   duree_perte                     : 0.0
   balise_effectivement_coupee     : False
-  erreur_localisation_moy_m       : 0.095
-  erreur_localisation_max_m       : 0.8506
-  incertitude_finale_m            : 0.5013
-  etat_surete_final               : ARRET_SUR
-  arret_sur_declenche             : True
-  temps_total_s                   : 39.55
-  journal_surete:
-    t=39.55s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+  erreur_localisation_moy_m       : 0.0382
+  erreur_localisation_max_m       : 0.1861
+  incertitude_finale_m            : 0.0233
+  etat_surete_final               : NOMINAL
+  arret_sur_declenche             : False
+  temps_total_s                   : 60.0
 
 --- RRT (avec perte de balise) ---
   planner                         : rrt
   perte_balise                    : True
   duree_perte                     : 3.0
   balise_effectivement_coupee     : True
-  erreur_localisation_moy_m       : 0.0399
-  erreur_localisation_max_m       : 0.2583
-  incertitude_finale_m            : 0.5015
-  etat_surete_final               : ARRET_SUR
-  arret_sur_declenche             : True
-  temps_total_s                   : 39.8
-  journal_surete:
-    t=39.80s  NOMINAL -> ARRET_SUR  (localisation_trop_incertaine)
+  erreur_localisation_moy_m       : 0.033
+  erreur_localisation_max_m       : 0.1434
+  incertitude_finale_m            : 0.0226
+  etat_surete_final               : NOMINAL
+  arret_sur_declenche             : False
+  temps_total_s                   : 60.0
 

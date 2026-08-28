@@ -19,6 +19,8 @@ Interface avec Camera.observe() (Tino, Role 5) :
 import math
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple
+
+import config
 from sensors.cameras import Camera
 
 
@@ -68,7 +70,7 @@ class IntrusionDetector:
         self,
         robot,
         known_obstacles: List[Tuple[float, float, float, float]] = None,
-        detection_cooldown: float = 2.0,
+        detection_cooldown: float = config.DETECTION_COOLDOWN,
         alert_distance_threshold: float = 3.0,
         obstacle_tolerance: float = 0.5,
     ):
