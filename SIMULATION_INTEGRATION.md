@@ -78,38 +78,75 @@ régression.
 - `WAREHOUSE_LANDMARKS` : 9 balises, placées le long des murs et au
   centre des allées pour couvrir le circuit de patrouille
 
-### 4.2 Ordre des opérations, à chaque pas `dt` (`experiments/integration_finale.py::_run_patrol`)
+### 4.2 Ordre des opérations — via `simulation.Simulator`
+
+Première version (voir §4.4) : boucle `for` écrite à la main. Version
+actuelle : `experiments/integration_finale.py` utilise réellement
+`simulation.Simulator` et ses callbacks `on_perceive` / `on_localize` /
+`on_detect` / `on_plan` / `on_safety`, comme prévu depuis le départ par
+`README.md` et `simulation/simulator.py` mais jamais branché par aucun
+rôle jusqu'ici (chaque script précédent écrivait sa propre boucle). Une
+classe `_IntegrationLoop` regroupe l'état partagé entre les callbacks (un
+callback ne reçoit que `(robot, t)`, donc tout ce qui doit survivre d'un
+pas à l'autre — l'EKF, le chemin courant, les compteurs — vit dans cette
+classe plutôt que dans des variables locales d'une fonction de boucle qui
+n'existe plus).
+
+`Simulator.run()` fixe l'ordre d'appel à chaque pas `dt` :
 
 ```
-1. Odometry.read(dt)                          -> d_left, d_right (bruités)
-2. Localizer.predict(d_left, d_right)         -> pose estimée (EKF, avance)
-3. LandmarkDetector.detect()                  -> balises visibles (bruitées)
-4. Localizer.correct(detections)              -> pose estimée (EKF, recale)
-   -----------------------------------------------------------------
-5. IntrusionDetector.check(cibles, t)         -> intrusion confirmée ? + alertes
-6. AlertManager.update(alertes, t)            -> niveau NOMINAL/INFO/WARNING/DANGER
-7. Speaker.update(alert_manager.should_alarm(), t)
-   -----------------------------------------------------------------
-8. LidarSensor.min_distance()                 -> distance au plus proche obstacle
-9. SafetyManager.check(robot,
-       localization_uncertainty=localizer.uncertainty,
-       obstacle_distance=...,
-       path_found=...,
-       intrusion_confirmed=alert_manager.get_intrusion_confirmed())
-   -> si ARRET_SUR : robot.emergency_stop() (interne à SafetyManager), fin de boucle
-   -----------------------------------------------------------------
-10. (si pas d'arrêt) AStarPlanner/RRTPlanner.plan(start=pose ESTIMÉE, goal=...)
-    -> replanifie si : pas de chemin courant, but atteint, ou périodiquement
-       (tous les 100 pas, plus fréquent si incertitude > 0.2m)
-11. PurePursuitController.compute_command(pose=pose ESTIMÉE, path=...)
-12. Robot.set_velocity(v, omega) -> Robot.step(dt)
+on_perceive  -> Odometry.read(dt)                    -> d_left, d_right (bruités)
+                LidarSensor.min_distance()            -> distance au plus proche obstacle
+on_localize  -> Localizer.predict(d_left, d_right)    -> pose estimée (EKF, avance)
+                LandmarkDetector.detect()             -> balises visibles (bruitées)
+                Localizer.correct(detections)         -> pose estimée (EKF, recale)
+on_detect    -> IntrusionDetector.check(cibles, t)    -> intrusion confirmée ? + alertes
+                AlertManager.update(alertes, t)       -> niveau NOMINAL/INFO/WARNING/DANGER
+                Speaker.update(should_alarm, t)
+on_plan      -> gestion des waypoints
+                AStarPlanner/RRTPlanner.plan(start=pose ESTIMÉE, goal=...)
+                -> replanifie si : pas de chemin courant, but atteint, ou
+                   périodiquement (tous les 100 pas, plus fréquent si
+                   incertitude > 0.2m)
+on_safety    -> SafetyManager.check(robot,
+                    localization_uncertainty=localizer.uncertainty,
+                    obstacle_distance=...,
+                    path_found=...,
+                    intrusion_confirmed=alert_manager.get_intrusion_confirmed())
+                -> si ARRET_SUR : robot.emergency_stop() (interne à SafetyManager)
+command_fn   -> PurePursuitController.compute_command(pose=pose ESTIMÉE, path=...)
+                Robot.set_velocity(v, omega)
+             -> Robot.step(dt)
+stop_fn      -> vérifié après le pas : arrête la simulation dès que la
+                mission réussit ou qu'un ARRET_SUR est déclenché
 ```
 
-Cet ordre est nécessaire pour la même raison que dans les boucles
-partielles déjà existantes : chaque étage lit le résultat de l'étage
-précédent (la sûreté doit connaître l'incertitude *après* la correction
-EKF de ce pas, la commande doit utiliser la pose *après* que la sûreté ait
-décidé de ne pas arrêter le robot).
+Cet ordre (imposé par `Simulator.run()`, pas choisi au cas par cas comme
+dans les scripts précédents) place la planification **avant** la
+vérification de sûreté — donc `path_found` reflète toujours la tentative
+de planification *du pas courant*, jamais une valeur restée d'un pas
+précédent.
+
+### 4.3 Ajout rétro-compatible à `simulation/simulator.py`
+
+`Simulator.run()` ne s'arrêtait jamais avant d'avoir consommé toute la
+`duration` demandée — un souci mineur pour une démo de 5s, mais
+problématique ici (`duration` doit couvrir le pire cas, ~400s, alors
+qu'une patrouille réussie se termine vers 170s ; sans arrêt anticipé, la
+simulation continuerait inutilement robot immobile pendant ~230s). Un
+paramètre optionnel `stop_fn(robot, t) -> bool` a été ajouté, vérifié
+après chaque pas ; `None` par défaut, donc **aucun appelant existant n'est
+affecté** (`main.py`, `tests/test_planning.py`,
+`experiments/run_experiments.py` n'utilisent pas ce paramètre).
+
+### 4.4 Ancienne version (pour référence)
+
+Une première version de `integration_finale.py` (avant ce refactoring)
+utilisait une boucle `for` manuelle, comme tous les autres scripts
+`experiments/`. Elle a été remplacée par la version basée sur `Simulator`
+ci-dessus, à la demande explicite de suivre l'architecture prévue par le
+projet plutôt que de perpétuer la convention "boucle à la main" adoptée
+par tous les rôles précédents faute d'exemple fonctionnel.
 
 **Point clé, comme dans `integration_localization.py`** : la
 planification et la commande utilisent `localizer.estimated_pose`, jamais
@@ -135,29 +172,44 @@ d'une distance seule.
 # Suite de tests complète (118 tests)
 venv/Scripts/python.exe -m pytest tests/ -q
 
-# Boucle d'intégration finale (A* puis RRT sur la carte entrepôt)
+# Boucle d'intégration finale (A* puis RRT sur la carte entrepôt, via Simulator)
 venv/Scripts/python.exe -m experiments.integration_finale
 ```
 
 > Le `venv` du projet contient `numpy` (nécessaire à `planning/astar.py`)
 > et, après ce travail, `pytest` — le Python système ne les a pas.
 
-**Résultats réels obtenus** (seed fixe, reproductibles) :
+**Résultats réels obtenus** (seed fixe, reproductibles à l'identique d'un
+run à l'autre) :
 
 | | A* | RRT |
 |---|---|---|
-| Succès | Oui | Oui |
-| Waypoints atteints | 7/7 | 7/7 |
-| Temps de mission | 173.5 s | 170.6 s |
-| Erreur de localisation max | 0.139 m | 0.271 m |
-| Erreur de localisation moyenne | 0.029 m | 0.031 m |
-| Pas avec intrusion confirmée | 666 | 584 |
+| Succès | **Non** — `ARRET_SUR` | Oui |
+| Waypoints atteints | 4/7 | 7/7 |
+| Temps de mission | 85.1 s | 172.4 s |
+| Erreur de localisation max | 0.073 m | 0.203 m |
+| Pas avec intrusion confirmée | 221 | 642 |
 | Niveau d'alerte max atteint | WARNING | WARNING |
 | Alarmes déclenchées (niveau DANGER) | 0 | 0 |
-| État de sûreté final | NOMINAL | NOMINAL |
+| État de sûreté final | **ARRET_SUR** | NOMINAL |
 
 Résultats sauvegardés dans
 `results/features_integration_finale/resume_integration_finale.txt`.
+
+**Ce résultat A* a changé après le passage à `Simulator`** (voir section
+7) : avant ce refactoring, avec la même graine aléatoire, A* réussissait
+7/7. `Simulator.run()` appelle les callbacks dans un ordre fixe
+(perceive→localize→detect→plan→safety), légèrement différent de l'ancien
+code écrit à la main — cela ne change pas la séquence de bruit tirée
+(seule `Odometry`/`LandmarkDetector` consomment `random`, toujours dans le
+même ordre), mais décale de quelques pas *quand* la replanification
+périodique est déclenchée. Résultat : au pas où A* replanifie vers WP6,
+la pose estimée (légèrement différente à cet instant précis) tombe cette
+fois dans la marge de sécurité gonflée autour du mur de la zone réservée
+→ `planner.plan()` échoue transitoirement → `SafetyManager` déclenche
+`ARRET_SUR` à raison. C'est reproductible avec ce code exact, mais
+sensible au moindre décalage de timing — voir la limite correspondante en
+section 7.
 
 ## 6. Paramètres de réglage
 
@@ -172,15 +224,22 @@ En plus de ceux déjà documentés par les autres rôles (`config.py`) :
 
 ## 7. Limites connues
 
-- **Comportement stochastique non trivial** : sans fixer la graine
-  aléatoire, une exécution occasionnelle du même scénario échoue —
+- **Comportement sensible au timing exact de la replanification** :
   l'estimation EKF, bruitée, peut tomber suffisamment près d'un obstacle
   gonflé (inflation de sécurité du rayon du robot) au moment précis d'une
   replanification pour que `planner.plan()` échoue transitoirement, ce
-  qui déclenche à raison un `ARRET_SUR`. **Ce n'est pas un bug** : c'est
-  le système de sûreté qui réagit correctement à une situation où le
-  robot ne peut momentanément plus faire confiance à sa position. C'est
-  documenté, pas corrigé, pour ne pas masquer un comportement réel.
+  qui déclenche à raison un `ARRET_SUR`. **Constaté concrètement** :
+  A* réussit 7/7 dans la version "boucle manuelle" (§4.4) et échoue à
+  WP6/8 dans la version `Simulator` (§4.2, résultat documenté en
+  section 5), avec la **même graine aléatoire** — l'ordre d'appel fixé
+  par `Simulator.run()` décale de quelques pas le moment exact des
+  replanifications périodiques, ce qui suffit à faire tomber (ou pas)
+  l'estimation dans la marge gonflée au bon moment. **Ce n'est pas un
+  bug** : c'est le système de sûreté qui réagit correctement à une
+  situation où le robot ne peut momentanément plus faire confiance à sa
+  position ; c'est documenté, pas corrigé, pour ne pas masquer ce
+  comportement réel — et c'est un exemple concret, pas seulement
+  théorique, à présenter en soutenance.
 - **`SafetyManager.obstacle_distance` n'est jamais comparé à
   `config.OBSTACLE_SAFE_DISTANCE`** dans la logique de décision actuelle
   de `safety/safety_manager.py` — seule l'absence totale de mesure

@@ -41,7 +41,7 @@ class Simulator:
         self.on_detect = None
         self.on_safety = None
 
-    def run(self, duration: float, command_fn=None, verbose: bool = False):
+    def run(self, duration: float, command_fn=None, verbose: bool = False, stop_fn=None):
         """
         Exécute la boucle de simulation pendant `duration` secondes.
 
@@ -55,6 +55,12 @@ class Simulator:
         reproduire la boucle système complète (section 11) une fois que
         les autres modules seront implémentés. Ils sont ignorés (no-op)
         tant qu'ils ne sont pas branchés.
+
+        stop_fn(robot, t) -> bool, optionnel : vérifié après chaque pas ;
+            si True, arrête la simulation avant d'avoir consommé toute la
+            `duration` (ex. mission terminée, arrêt sûr déclenché). Ignoré
+            si absent (comportement inchangé : la boucle va jusqu'au bout
+            de `duration`).
         """
         n_steps = int(round(duration / self.dt))
         for i in range(n_steps):
@@ -78,5 +84,8 @@ class Simulator:
 
             if verbose:
                 print(self.robot.get_state())
+
+            if stop_fn and stop_fn(self.robot, t):
+                break
 
         return self.robot.get_state()
