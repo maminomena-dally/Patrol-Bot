@@ -316,11 +316,11 @@ results/warehouse_integration/
 - **Commit** : `feat(security): pipeline securite complet (detecteur + alertes + speaker)`
 
 ### Phase 6 — Tests & Livraison ⏸ A FAIRE
-- [ ] Tous les tests passent (32 planning + 6 integration + 29 securite + 4 securite integration = 71)
-- [ ] Resultats de comparaison pour Role 5 (Tino) — **PRETS** (voir sections ci-dessous)
-- [ ] Interface documentee pour Role 4 (Dally) — **PRETE** (voir guide ci-dessous)
-- [ ] Commit, push, PR vers `main`
-- [ ] Preparer contribution pour la section 4 du rapport
+- [x] Tous les tests passent (32 planning + 6 integration + 29 securite + 4 securite integration = 71)
+- [x] Resultats de comparaison pour Role 5 (Tino) — **PRETS** (voir sections ci-dessous)
+- [x] Interface documentee pour Role 4 (Dally) — **PRETE** (voir guide ci-dessous)
+- [x] Commit, push, PR vers `main`
+- [x] Preparer contribution pour la section 4 du rapport
 
 ---
 

@@ -55,7 +55,7 @@ ODOMETRY_NOISE_STD = 0.01              # m — écart-type du bruit gaussien ajo
 LANDMARK_DETECTION_RADIUS = 6.0        # m — distance max à laquelle une balise est détectée
 LANDMARK_NOISE_STD_DISTANCE = 0.05     # m — écart-type du bruit sur la distance mesurée à une balise
 LANDMARK_NOISE_STD_ANGLE = 0.03        # rad — écart-type du bruit sur l'angle mesuré vers une balise
-LOCALIZATION_PROCESS_NOISE = 0.05      # facteur de croissance de l'incertitude par mètre/radian parcouru (predict)
+LOCALIZATION_PROCESS_NOISE = 0.008     # facteur de croissance de l'incertitude par mètre/radian parcouru (predict)
 LOCALIZATION_MEASUREMENT_NOISE = 0.1   # m — confiance accordée à une mesure de balise (correct)
 
 # Securite / intrusion (Role 1 - Koja) — centralise ici pour coherence
