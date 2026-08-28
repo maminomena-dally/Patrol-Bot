@@ -1,14 +1,20 @@
 """
-main.py — Démonstration du module "Système et Cinématique".
+main.py — Démonstration du module "Système et Cinématique" + aperçu du
+système complet.
 
-Ce script montre que le coeur cinématique fonctionne de bout en bout :
-création du robot, commande, avance, virage, respect des limites,
-export d'un log rejouable. Il sert aussi de point de départ pour les
-autres binômes : chaque module peut être branché ici au fur et à mesure
-qu'il est développé (voir les commentaires "BRANCHEMENT FUTUR").
+Ce script montre d'abord que le coeur cinématique fonctionne de bout en
+bout : création du robot, commande, avance, virage, respect des limites,
+export d'un log rejouable. Il enchaîne ensuite avec un aperçu rapide du
+système complet (perception, localisation EKF, sécurité, sûreté,
+planification, commande), réellement assemblé dans
+experiments/integration_finale.py (voir SIMULATION_INTEGRATION.md pour le
+détail).
 
 Lancer avec :
     python main.py
+
+Pour le détail complet du système (graphiques, logs, comparaison A*/RRT) :
+    python -m experiments.integration_finale
 """
 
 import config
@@ -47,6 +53,20 @@ def demo_arret_sur(robot: Robot):
     print(f"Après resume() : stopped={robot.stopped}")
 
 
+def demo_systeme_complet():
+    print("\n--- Scénario 5 : système complet (patrouille entrepôt, A*) ---")
+    from experiments.integration_finale import _run_patrol
+    metrics, robot, loop = _run_patrol("astar", verbose=False)
+    print(f"Perception + Localisation EKF + Sécurité + Sûreté + Planification + Commande")
+    print(f"Succès              : {metrics['success']}")
+    print(f"Waypoints atteints  : {metrics['waypoints_reached']}/{metrics['waypoints_target']}")
+    print(f"Erreur loc. max     : {metrics.get('max_loc_error')} m")
+    print(f"Intrusions détectées: {metrics['intrusions_detected']} pas")
+    print(f"État de sûreté final: {metrics['safety_final_state']}")
+    print("Pour le détail complet (RRT, graphiques, logs de rejeu) : "
+          "python -m experiments.integration_finale")
+
+
 def main():
     robot = Robot()
     sim = Simulator(robot)
@@ -54,20 +74,6 @@ def main():
     print("Robot créé :", robot)
     print(f"Paramètres : rayon={robot.radius} m, entraxe={robot.wheel_base} m, "
           f"v_max={robot.v_max} m/s, omega_max={robot.omega_max} rad/s")
-
-    # ------------------------------------------------------------------
-    # BRANCHEMENT FUTUR : une fois les autres modules développés, on
-    # pourra les connecter ici, par exemple :
-    #
-    #   from sensors.lidar import LidarSensor
-    #   from security.intrusion_detector import IntrusionDetector
-    #   from security.alert_manager import AlertManager
-    #   from safety.safety_manager import SafetyManager
-    #
-    #   robot.sensors["lidar"] = LidarSensor(robot, obstacles=[...])
-    #   safety_mgr = SafetyManager()
-    #   sim.on_safety = lambda r, t: safety_mgr.check(r, ...)
-    # ------------------------------------------------------------------
 
     demo_ligne_droite(robot, sim)
     demo_virage(robot, sim)
@@ -77,6 +83,9 @@ def main():
     log_path = robot.export_log()
     print(f"\nLog exporté dans : {log_path} ({len(robot.history)} pas enregistrés)")
     print("\nDémonstration du module Système/Cinématique terminée avec succès.")
+
+    demo_systeme_complet()
+    print("\nAperçu du système complet terminé.")
 
 
 if __name__ == "__main__":
