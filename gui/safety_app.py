@@ -3,16 +3,19 @@ gui/safety_app.py — Interface graphique interactive du SafetyManager (Role 5 -
 
 Permet de piloter le robot a la main (comme gui/app.py de Malala) tout en
 observant EN DIRECT la reaction du SafetyManager :
-  - un obstacle imprevu qu'on fait apparaitre en un clic,
-  - un curseur d'incertitude de localisation (simule Localizer.uncertainty),
+  - un obstacle imprevu qu'on fait apparaitre en un clic (lidar reel, cf. sensors/lidar.py),
+  - une case pour couper les balises et voir l'incertitude de localisation
+    deriver en direct (localisation reelle : Odometry + LandmarkDetector +
+    Localizer, cf. localization/localization.py),
   - une case "aucun chemin trouve" (simule un echec de replanification),
   - une case "capteur indisponible",
   - l'etat de surete affiche en direct (NOMINAL / ALERTE / ARRET_SUR),
   - le journal des transitions, visible dans la fenetre.
 
 Reutilise gui/robot_view.py (deja colore selon robot.stopped) sans le
-modifier, conformement a la convention du projet. Aucun autre fichier de
-l'equipe n'est touche : ce module est autonome.
+modifier, conformement a la convention du projet. Reutilise aussi les
+balises definies dans experiments/campagne_localisation.py (memes
+positions, coherence entre la demo GUI et les campagnes en script).
 
 Lancer depuis la racine du projet :
     python -m gui.safety_app
@@ -38,6 +41,10 @@ from robot.robot import Robot
 from gui.robot_view import RobotView
 from safety.safety_manager import SafetyManager, EtatSurete
 from sensors.lidar import LidarSensor
+from sensors.odometry import Odometry
+from sensors.landmarks import LandmarkDetector
+from localization.localization import Localizer
+from experiments.campagne_localisation import LANDMARKS
 
 
 def clamp(value, vmin, vmax):
@@ -65,6 +72,9 @@ class SafetyDemoGUI(tk.Tk):
         self.robot = Robot(initial_pose=(2.0, 7.5, 0.0))
         self.sm = SafetyManager(tentatives_max_replanification=3)
         self.lidar = LidarSensor(self.robot, obstacles=[OBSTACLE_FIXE])  # LIAISON : vrai capteur
+        self.odometry = Odometry(self.robot)
+        self.landmarks_detector = LandmarkDetector(self.robot, LANDMARKS)  # memes balises que campagne_localisation.py
+        self.localizer = Localizer(initial_pose=(2.0, 7.5, 0.0))  # LIAISON : vraie localisation
         self.running = False
         self.dt_ms = max(1, int(config.DT * 1000))
 
@@ -153,11 +163,15 @@ class SafetyDemoGUI(tk.Tk):
             panel, text="Capteur critique indisponible",
             variable=self.capteur_indispo_var).pack(anchor="w", pady=(0, 8))
 
-        ttk.Label(panel, text="Incertitude de localisation simulée (m)"
+        ttk.Label(panel, text="Incertitude de localisation (m) — en direct"
                   f" — seuil = {config.LOCALIZATION_UNCERTAINTY_MAX}").pack(anchor="w")
-        self.incertitude_var = tk.DoubleVar(value=0.05)
-        ttk.Scale(panel, from_=0.0, to=1.0, orient=tk.HORIZONTAL,
-                  variable=self.incertitude_var).pack(fill=tk.X, pady=(0, 10))
+        self.incertitude_label = ttk.Label(panel, text="0.000 m", font=("TkDefaultFont", 11, "bold"))
+        self.incertitude_label.pack(anchor="w", pady=(0, 4))
+
+        self.balise_coupee_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            panel, text="Couper les balises (simule une perte de balise)",
+            variable=self.balise_coupee_var).pack(anchor="w", pady=(0, 10))
 
         ttk.Button(panel, text="Tenter une reprise (resume_si_possible)",
                    command=self.tenter_reprise).pack(fill=tk.X, pady=(0, 10))
@@ -232,9 +246,12 @@ class SafetyDemoGUI(tk.Tk):
         self.incertitude_var.set(0.05)
         self.path_found_var.set(True)
         self.capteur_indispo_var.set(False)
+        self.balise_coupee_var.set(False)
         self.obstacle_visible = False
         self.obstacle_patch.set_visible(False)
         self.lidar.update_obstacles([OBSTACLE_FIXE])
+        self.localizer = Localizer(initial_pose=(2.0, 7.5, 0.0))  # reinitialise la localisation aussi
+        self.incertitude_label.config(text="0.000 m")
         self.view.reset_trail()
         self.journal_box.delete(0, tk.END)
         self.canvas.draw_idle()
@@ -250,10 +267,18 @@ class SafetyDemoGUI(tk.Tk):
 
         self.robot.step(dt=config.DT)
 
+        # -- Localisation reelle : predict (odometrie) + correct (balises) --
+        d_left, d_right = self.odometry.read(config.DT)
+        self.localizer.predict(d_left, d_right)
+        if not self.balise_coupee_var.get():
+            detections = self.landmarks_detector.detect()
+            self.localizer.correct(detections)
+        self.incertitude_label.config(text=f"{self.localizer.uncertainty:.3f} m")
+
         if self.capteur_indispo_var.get():
             incertitude, distance = None, None
         else:
-            incertitude = self.incertitude_var.get()
+            incertitude = self.localizer.uncertainty  # LIAISON : vraie incertitude, plus un curseur manuel
             distance = self.lidar.min_distance()  # LIAISON : vraie mesure, plus une heuristique
 
         n_avant = len(self.sm.journal)

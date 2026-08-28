@@ -58,6 +58,16 @@ LANDMARK_NOISE_STD_ANGLE = 0.03        # rad — écart-type du bruit sur l'angl
 LOCALIZATION_PROCESS_NOISE = 0.05      # facteur de croissance de l'incertitude par mètre/radian parcouru (predict)
 LOCALIZATION_MEASUREMENT_NOISE = 0.1   # m — confiance accordée à une mesure de balise (correct)
 
+# Securite / intrusion (Role 1 - Koja) — centralise ici pour coherence
+# avec le reste du projet (etait code en dur dans security/*.py)
+DETECTION_COOLDOWN = 2.0          # s — délai min entre deux nouvelles alertes créées (IntrusionDetector)
+ALERT_RESOLUTION_DELAY = 3.0      # s — délai sans intrusion avant retour NOMINAL (AlertManager)
+# DOIT rester > DETECTION_COOLDOWN, sinon le niveau d'alerte oscille
+# (détecté -> nominal -> détecté...) même avec un intrus visible en
+# continu : entre deux créations d'alerte (tous les DETECTION_COOLDOWN),
+# ALERT_RESOLUTION_DELAY doit avoir le temps de ne PAS expirer.
+# Trouve et corrige par Role 5 (Tino), voir TINO_WORKFLOW.md Jour 7.
+
 # ----------------------------------------------------------------------
 # Journalisation (section 18, 19)
 # ----------------------------------------------------------------------

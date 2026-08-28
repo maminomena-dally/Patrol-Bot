@@ -1,0 +1,16 @@
+DEMO CHAINE DE SECURITE COMPLETE -- Role 5 (Tino)
+IntrusionDetector -> AlertManager -> Speaker + SafetyManager
+=================================================================
+
+Nombre de pas simules : 205
+Etat final : ARRET_SUR
+Niveau d'alerte final : danger
+
+Verification de coherence :
+  OK -- alarme et arret d'urgence declenches uniquement au niveau DANGER
+
+Transitions de niveau d'alerte :
+  t=0.00s  distance_intrus=6.00m  -> niveau=nominal
+  t=2.20s  distance_intrus=4.99m  -> niveau=info
+  t=6.20s  distance_intrus=3.15m  -> niveau=warning
+  t=10.20s  distance_intrus=1.31m  -> niveau=danger

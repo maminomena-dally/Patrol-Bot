@@ -1,7 +1,7 @@
 🎯 Role 5 — Experimentation, Surete et Qualite : Suivi de travail
 Tino — M2 SDIA
-> **Derniere mise a jour** : Phase 5 en cours (distance min. obstacles + demo visuelle SafetyManager ajoutees ; reste bloque en attente du groupe/dally)
-> **Statut global** : 🟢 Phases 1-4 terminees, Phase 5 partiellement faite — le reste depend des autres roles
+> **Derniere mise a jour** : Phase 5 quasi-terminee (recalibration localisation + intrusion faite, intrusion_danger corrige dans l'integration finale de dally)
+> **Statut global** : 🟢 Role complet — plus aucune tache de code en attente
 > **Branche** : `feature/surete-experimentation`
 > **Sources lues** :
 > - ✅ Cadrage_Mini_Projet_Robotique_Mobile.pdf
@@ -32,7 +32,7 @@ Phase 2 — SafetyManager ✅ TERMINE
 [x] Detection "aucun chemin valide" (echecs de replanification consecutifs, seuil configurable)
 [x] Detection "localisation trop incertaine" (seuil configurable, `config.LOCALIZATION_UNCERTAINTY_MAX`)
 [x] Detection "capteur critique indisponible" (aucune mesure recue -> arret par prudence)
-[x] Relai d'une intrusion confirmee vers `security/alert_manager.py` (optionnel, ne bloque pas si absent)
+[x] Reception (pas relai) des infos d'intrusion depuis `security/alert_manager.py` : `intrusion_confirmed`/`intrusion_danger` recus en parametres de `check()`, jamais interroges directement (corrige le 25/08, voir Jour 6 — le design initial poussait vers un `alert_manager.notify()` inexistant)
 [x] Journal des transitions d'etat (base pour le rejeu et le rapport)
 [x] `resume_si_possible()` : reprise toujours explicite, jamais automatique dans `check()`
 [x] Tests unitaires (`tests/test_safety.py`) — 13 tests
@@ -62,7 +62,7 @@ Phase 5 — Integration finale & rapport ⏸ EN COURS
 [ ] Rediger la section 4/5 du rapport (methodologie de la campagne, resultats, analyse des cas limites, limites connues)
 [x] `sensors/lidar.py` et `sensors/cameras.py` : DEBLOQUE — ces 2 capteurs sont tombes sur ce role (sans responsable depuis le depart de Kojy). Implementes, testes (9 tests), et branches reellement (obstacle_distance vient desormais du lidar, plus une valeur simulee) dans demo_safety.py, campagne_localisation.py et gui/safety_app.py
 [ ] Brancher reellement `sim.on_safety` dans la boucle d'integration finale (avec dally) — en attente de dally (seule tache de code encore bloquee de ce role)
-Constat de calibration a signaler au groupe (voir `resume_localisation.txt`) : avec `LOCALIZATION_PROCESS_NOISE=0.05` et les balises actuelles, l'incertitude derive jusqu'au seuil `LOCALIZATION_UNCERTAINTY_MAX=0.5` sur un trajet d'environ 15-20m, MEME SANS perte de balise. La distinction "avec/sans perte de balise" est donc masquee par cette derive de fond. A ajuster (process_noise plus faible, ou balises plus rapprochees) une fois le reste de l'equipe pret a recalibrer ensemble — matiere utile pour la section "limites connues" du rapport.
+Constat de calibration RESOLU (Jour 7, voir plus bas) : les balises de mon propre scenario de test etaient trop clairsemees (4, trou volontaire de 8m) comparees a la realite du projet (`WAREHOUSE_LANDMARKS`, 9 balises espacees de 7-8m). Corrige dans `experiments/campagne_localisation.py` uniquement (pas de changement partage) : desormais `NOMINAL` sur tous les cas, sauf perte de balise prolongee (>=10s), qui declenche bien `ARRET_SUR` comme attendu. `LOCALIZATION_PROCESS_NOISE` (partage, config.py) n'a PAS ete touche : deja bon pour le vrai scenario (`integration_finale.py` reussit sans souci, confirme par dally via `LANDMARK_DETECTION_RADIUS` passe de 2.0 a 6.0 avant meme cette investigation)
 Historique des commits
 Date	Commit	Fichiers	Tests
 J+X	`feat(safety): implémente SafetyManager (arrêt sûr, journal, reprise)`	`safety/safety_manager.py`, `tests/test_safety.py`	74 pass (13 safety + 61 existants)
@@ -75,7 +75,7 @@ Bloquants : Aucun — toutes les interfaces necessaires (`robot.emergency_stop()
 Decisions :
 Reprise de l'arret sur toujours explicite (`resume_si_possible()`), jamais automatique dans `check()`, pour eviter des oscillations arret/reprise non controlees
 Seuil de tentatives de replanification avant arret = 3 (tolerance aux echecs transitoires, coherent avec la logique de replanification de Koja)
-Intrusion confirmee geree en `no-op` si `security/alert_manager.py` n'est pas branche, pour ne jamais faire planter le systeme a cause d'un module pas encore pret
+Intrusion confirmee geree en `no-op` si `security/alert_manager.py` n'est pas branche, pour ne jamais faire planter le systeme a cause d'un module pas encore pret (design initial pousse — corrige au Jour 6, voir plus bas : security/ etait un stub a l'epoque, l'interface reelle de Koja est differente et le sens du flux a du etre inverse)
 Jour 2 — Campagne d'essais statistique
 Fait : Extension non-cassante de `scenario_replanification()` (Koja) pour parametrer position/instant de l'obstacle imprevu. Creation de `campagne_essais.py` : 10 essais nominaux + 2 cas limites testables, x2 algos, avec verification croisee du `SafetyManager` sur le cas "couloir bloque". Resultats agreges et exportes.
 Bloquants :
@@ -90,7 +90,7 @@ Bloquants : Aucun — reutilise `_min_dist_to_rects()` deja ecrite par Koja
 Decisions : Calcul factorise dans une fonction dediee (`_min_obstacle_dist_sur_trajet`) appelee a chaque point de sortie de `scenario_replanification()` (4 `return` possibles), plutot que duplique — evite les incoherences si un cas est oublie
 A faire ensuite (bloque, en attente des autres roles) :
 Branchement reel de `sim.on_safety` dans la boucle finale -> attend dally
-`security/` (intrusion_detector, alert_manager, speaker) -> toujours sans responsable, non touche (hors de perimetre de ce role)
+`security/` (intrusion_detector, alert_manager, speaker) -> FAIT PAR KOJA depuis (voir Jour 6) — lien corrige avec SafetyManager
 Jour 4 — Erreur de localisation + cas limite perte de balise
 Fait : Verification sur le depot a jour que `localization/localization.py`, `sensors/odometry.py` et `sensors/landmarks.py` sont deja reellement implementes (pas des stubs) — le blocage "attend Kojy" n'etait plus reel. Cree `experiments/campagne_localisation.py` : branche Odometry + LandmarkDetector + Localizer reellement dans une boucle de simulation (pas simules), calcule l'erreur de localisation (position reelle vs estimee), et teste le cas limite "perte de balise" (balises rendues indetectables 3s pendant la replanification).
 Bloquants : Aucun cote code. Trouve un probleme de CALIBRATION (pas un bug) : les 4 balises "points de controle" de Koja sont a >4.5m du corridor de test de replanification (hors du rayon de detection de 2.0m) — inutilisables telles quelles pour ce scenario. Balises dediees definies le long du corridor a la place (documente dans le fichier).
@@ -98,8 +98,17 @@ Decisions : Ne modifie pas `security/` (toujours des stubs, hors de perimetre) �
 Jour 5 — Capteurs lidar et cameras (sensor tombe sur ce role)
 Fait : Implemente `sensors/lidar.py` (LidarSensor, scan 360 deg par intersection rayon/rectangle, methode des slabs) et `sensors/cameras.py` (Camera frontale + surveillance, champ de vision/portee). 9 tests avec geometrie verifiee a la main. Branche reellement le lidar dans `demo_safety.py`, `campagne_localisation.py` et `gui/safety_app.py` : `obstacle_distance` n'est plus simule en dur, vient du capteur.
 Bloquants : Aucun
-Decisions : `Camera.observe()` produit un contrat de donnees ({"x","y","distance","angle_deg","camera"}) documente pour `security/intrusion_detector.py`, sans implementer ce dernier (hors de perimetre, toujours sans responsable) — pret a brancher quand quelqu'un le reprendra
-Resultat notable : avec la config actuelle (`LOCALIZATION_PROCESS_NOISE=0.05`), l'incertitude dérive jusqu'au seuil meme SANS perte de balise sur un trajet de 15-20m — a signaler au groupe pour recalibration (voir "Constat de calibration" en Phase 5)
+Decisions : `Camera.observe()` produit un contrat de donnees ({"x","y","distance","angle_deg","camera"}) documente pour `security/intrusion_detector.py` — confirme utilise TEL QUEL par Koja (`from sensors.cameras import Camera`, memes noms de parametres exacts), aucune adaptation necessaire
+Jour 6 — Correction de la liaison SafetyManager <-> security/, demo bout-en-bout
+Fait : Koja a implemente `security/` (intrusion_detector.py, alert_manager.py, speaker.py) et documente l'interface attendue avec SafetyManager. Audit complet du code (sur demande explicite) a revele que mon design initial etait FAUX : `SafetyManager._declencher_alerte()` appelait `alert_manager.notify(...)`, une methode qui n'existe pas dans l'implementation reelle de Koja — code mort, jamais declenche. L'interface reelle documentee est inversee : l'appelant lit `am.get_intrusion_confirmed()` et `am.is_danger()`, puis les PASSE a `SafetyManager.check()`. Corrige : suppression de `_declencher_alerte`, ajout du parametre `intrusion_danger` qui declenche un arret d'urgence reel (auparavant, aucune intrusion ne pouvait arreter le robot, contrairement a ce que documentait Koja : "am.is_danger() -> arret urgence"). Cree `experiments/demo_intrusion.py` : premier scenario bout-en-bout reliant IntrusionDetector -> AlertManager -> Speaker + SafetyManager, avec verification automatique de coherence (alarme et arret uniquement au niveau DANGER, jamais avant).
+Bloquants : Aucun cote code
+Decisions : `intrusion_confirmed` seul (niveau INFO/WARNING) place le systeme en ALERTE (vigilance) sans arreter le robot ; seul `intrusion_danger` (niveau DANGER) declenche `ARRET_SUR`, conforme a la doc de Koja
+Constat de calibration RESOLU (Jour 7, voir plus bas) : `DETECTION_COOLDOWN`/`ALERT_RESOLUTION_DELAY` centralises dans `config.py` (etaient codes en dur dans `security/*.py`), avec `ALERT_RESOLUTION_DELAY=3.0s > DETECTION_COOLDOWN=2.0s`. Plus d'oscillation : progression propre nominal -> info -> warning -> danger, verifie dans `resume_intrusion.txt`
+Jour 7 — Recalibration localisation/intrusion, correction integration_finale de dally
+Fait : (1) Trouve que `experiments/integration_finale.py` (nouveau fichier de dally, integration reelle des 6 modules) appelait `SafetyManager.check()` sans `intrusion_danger` — corrige, verifie que la patrouille complete (A* et RRT) reussit toujours apres coup. (2) Diagnostique le "constat de calibration" localisation du Jour 6 : pas un probleme de `LOCALIZATION_PROCESS_NOISE` (deja bon, confirme par le succes de `integration_finale.py`), mais mes propres balises de test dans `campagne_localisation.py` etaient trop clairsemees comparees a la realite du projet -- corrige (densite alignee sur `WAREHOUSE_LANDMARKS`). Verifie avec plusieurs durees de perte de balise (3/6/10/15s) : tolerant aux pertes courtes, declenche `ARRET_SUR` a partir de 10s -- comportement attendu confirme. (3) Centralise `DETECTION_COOLDOWN`/`ALERT_RESOLUTION_DELAY` dans `config.py`, corrige l'oscillation du niveau d'alerte.
+Bloquants : Aucun
+Decisions : Ne pas toucher `LOCALIZATION_PROCESS_NOISE` (config partagee, deja bonne) -- corriger la densite des balises dans mon propre fichier de test uniquement, zero risque de regression sur le travail des autres. Pour l'intrusion, centraliser dans `config.py` plutot que changer les defauts codes en dur de Koja directement, pour rester coherent avec le reste du projet (localisation deja centralisee ainsi) et permettre un ajustement futur en un seul endroit.
+Ajoute `random.seed()` dans `campagne_localisation.py` (manquant, resultats non reproductibles d'une execution a l'autre a cause du bruit d'odometrie non-seede)
 Interface publique de mes modules
 SafetyManager
 ```python
@@ -151,7 +160,7 @@ Role 1 (Malala — Cinematique) : ✅ Aucune dependance bloquante — `robot.eme
 Role 2 (Kojy — Perception/Localisation) : ⚠️ Role retire de l'equipe, mais son travail (`Localizer`, `Odometry`, `LandmarkDetector`) est complet et fonctionnel — verifie et reellement utilise dans `experiments/campagne_localisation.py`. Ne bloque donc plus rien pour ce role. Reste sans responsable pour la maintenance/calibration future (voir "Constat de calibration", Phase 5)
 Role 3 (Koja — Planification/Commande) : ✅ Interface stable (`planner.plan()` retourne `[]` si echec, `scenario_replanification()` etendu sans casser son code). Guide dedie tres complet laisse dans `ROLE3_WORKFLOW.md`
 Role 4 (Dally — Simulation/Integration) : ⏳ En attente — le branchement reel de `sim.on_safety` dans la boucle d'integration finale reste a faire ensemble
-Equipe Securite (`security/`) : ⏳ Sans responsable depuis le depart de Kojy. `SafetyManager` est concu pour fonctionner sans ce module (relai optionnel, `no-op` si absent), donc pas bloquant pour ce role, mais a trancher pour la livraison finale
+Equipe Securite (`security/`) : ✅ Implemente par Koja (intrusion_detector.py, alert_manager.py, speaker.py). LIAISON CORRIGEE (Jour 6) : le design initial de `SafetyManager` tentait de pousser une notification vers `alert_manager.notify()` (methode inexistante, code mort). L'interface reelle documentee par Koja est inversee : `AlertManager.get_intrusion_confirmed()` et `.is_danger()` sont lus par l'appelant et PASSES a `SafetyManager.check(intrusion_confirmed=..., intrusion_danger=...)`. Corrige, teste, demontre bout-en-bout dans `experiments/demo_intrusion.py`
 Convention Git
 Branche : `feature/surete-experimentation`
 Messages : `feat(safety): ...` / `feat(experiments): ...`
@@ -168,5 +177,10 @@ Fichier	Role	Description
 `sensors/lidar.py`	Nouveau (stub -> implementation, tombe sur ce role)	LidarSensor, scan 360 deg
 `sensors/cameras.py`	Nouveau (stub -> implementation, tombe sur ce role)	Camera frontale + surveillance
 `tests/test_sensors.py`	Nouveau	9 tests (lidar + cameras)
+`experiments/demo_intrusion.py`	Nouveau	Demo bout-en-bout IntrusionDetector -> AlertManager -> Speaker + SafetyManager
+`safety/safety_manager.py`	Modifie (correction liaison)	Suppression du relai casse vers alert_manager.notify(), ajout intrusion_danger
+`experiments/integration_finale.py`	Modifie (correction liaison, fichier de dally)	Ajout de intrusion_danger, manquant depuis sa creation
+`config.py`	Modifie (ajout)	DETECTION_COOLDOWN, ALERT_RESOLUTION_DELAY (centralises, etaient codes en dur)
+`security/intrusion_detector.py`, `security/alert_manager.py`	Modifie (recalibration)	Defauts branches sur config.py au lieu de valeurs en dur
 `results/features_experimentation/`	Nouveau	Resultats agreges (CSV + resume texte, campagnes essais + localisation)
 `TINO_WORKFLOW.md`	Nouveau (ex ROLE5_WORKFLOW.md)	Ce fichier

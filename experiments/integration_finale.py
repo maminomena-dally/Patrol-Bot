@@ -129,6 +129,7 @@ def _run_patrol(planner_name="astar", verbose=False, max_time=400.0,
             obstacle_distance=obstacle_distance,
             path_found=path_found,
             intrusion_confirmed=alert_manager.get_intrusion_confirmed(),
+            intrusion_danger=alert_manager.is_danger(),
         )
 
         if etat == EtatSurete.ARRET_SUR:
