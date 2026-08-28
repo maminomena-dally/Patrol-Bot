@@ -144,35 +144,43 @@ class TestSafetyManagerReprise(unittest.TestCase):
 
 
 class TestSafetyManagerIntrusion(unittest.TestCase):
-    def test_intrusion_confirmee_sans_alert_manager_ne_plante_pas(self):
-        robot = Robot()  # robot.security == {} par défaut
+    def test_intrusion_confirmee_seule_passe_en_alerte_sans_arret(self):
+        robot = Robot()
         sm = SafetyManager()
 
-        # ne doit lever aucune exception même si security/alert_manager
-        # n'est pas encore branché
         etat = sm.check(robot, localization_uncertainty=0.05, obstacle_distance=2.0,
                          path_found=True, intrusion_confirmed=True)
 
-        self.assertEqual(etat, EtatSurete.NOMINAL)
+        self.assertEqual(etat, EtatSurete.ALERTE)
+        self.assertFalse(robot.stopped)
 
-    def test_intrusion_confirmee_notifie_alert_manager_si_present(self):
-        class FauxAlertManager:
-            def __init__(self):
-                self.appels = []
-
-            def notify(self, robot, confidence):
-                self.appels.append(confidence)
-
+    def test_intrusion_danger_declenche_arret_urgence(self):
         robot = Robot()
-        faux_alert_manager = FauxAlertManager()
-        robot.security["alert_manager"] = faux_alert_manager
+        sm = SafetyManager()
+
+        etat = sm.check(robot, localization_uncertainty=0.05, obstacle_distance=2.0,
+                         path_found=True, intrusion_confirmed=True, intrusion_danger=True)
+
+        self.assertEqual(etat, EtatSurete.ARRET_SUR)
+        self.assertTrue(robot.stopped)
+
+    def test_intrusion_danger_journalisee_avec_la_bonne_raison(self):
+        robot = Robot()
         sm = SafetyManager()
 
         sm.check(robot, localization_uncertainty=0.05, obstacle_distance=2.0,
-                  path_found=True, intrusion_confirmed=True)
+                  path_found=True, intrusion_confirmed=True, intrusion_danger=True)
 
-        self.assertEqual(len(faux_alert_manager.appels), 1)
-        self.assertEqual(faux_alert_manager.appels[0], 1.0)
+        self.assertEqual(sm.journal[-1].raison, "intrusion_danger")
+
+    def test_aucune_intrusion_reste_nominal(self):
+        robot = Robot()
+        sm = SafetyManager()
+
+        etat = sm.check(robot, localization_uncertainty=0.05, obstacle_distance=2.0,
+                         path_found=True, intrusion_confirmed=False, intrusion_danger=False)
+
+        self.assertEqual(etat, EtatSurete.NOMINAL)
 
 
 if __name__ == "__main__":

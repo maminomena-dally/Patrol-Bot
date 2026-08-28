@@ -27,6 +27,7 @@ from experiments.run_experiments import (
     scenario_replanification,
 )
 from safety.safety_manager import SafetyManager, EtatSurete
+from sensors.lidar import LidarSensor
 
 
 # ======================================================================
@@ -125,11 +126,15 @@ def executer_essai(essai, planner_name, verbose=False):
     resultat["aucun_chemin_trouve"] = aucun_chemin
 
     if aucun_chemin:
+        # LIAISON : robot positionne juste devant l'obstacle bloquant, lidar
+        # reel pour obstacle_distance (plus une valeur simulee en dur)
+        robot_fictif = _RobotFictif(x=essai["obstacle"]["x"] - 0.3, y=7.5)
+        lidar = LidarSensor(robot_fictif, obstacles=[essai["obstacle"]])
         sm = SafetyManager(tentatives_max_replanification=3)
         etat = None
         for _ in range(3):  # simule les tentatives de replanification
-            etat = sm.check(_RobotFictif(), localization_uncertainty=0.05,
-                             obstacle_distance=0.0, path_found=False)
+            etat = sm.check(robot_fictif, localization_uncertainty=0.05,
+                             obstacle_distance=lidar.min_distance(), path_found=False)
         resultat["safety_reaction"] = etat.name
         resultat["safety_ok"] = (etat == EtatSurete.ARRET_SUR)
     else:
@@ -140,13 +145,18 @@ def executer_essai(essai, planner_name, verbose=False):
 
 
 class _RobotFictif:
-    """Petit objet minimal pour tester SafetyManager hors boucle robot reelle."""
-    def __init__(self):
+    """Petit objet minimal pour tester SafetyManager (+ LidarSensor) hors
+    boucle robot reelle. get_true_pose() est requis par LidarSensor."""
+    def __init__(self, x=0.0, y=0.0, theta=0.0):
         self.time = 0.0
         self.stopped = False
         self.v = 0.0
         self.omega = 0.0
         self.security = {}
+        self._x, self._y, self._theta = x, y, theta
+
+    def get_true_pose(self):
+        return self._x, self._y, self._theta
 
     def emergency_stop(self):
         self.stopped = True
