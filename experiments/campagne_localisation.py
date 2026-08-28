@@ -29,6 +29,7 @@ Lancer avec :
 import csv
 import math
 import os
+import random
 import statistics as stats
 
 import config
@@ -49,21 +50,18 @@ from planning.astar import create_test_grid
 
 
 # Balises dediees a CE scenario de test (corridor y=7.5, cf. START/GOAL
-# ci-dessous). Les 4 balises "points de controle" de Koja (PATROL_WAYPOINTS)
-# sont a >4.5m de ce corridor : hors de LANDMARK_DETECTION_RADIUS (2.0m),
-# donc jamais detectees ici -- inutilisables pour CE test precis. On place
-# ici des balises le long du corridor pour permettre une correction reelle
-# de la position estimee pendant le trajet (rayon de detection = 2.0m,
-# balises espacees de 4m => couverture continue le long du corridor).
+# ci-dessous). Densite alignee sur celle du vrai scenario d'integration
+# (voir experiments/entrepot_patrouille.py::WAREHOUSE_LANDMARKS, ~7-8m
+# d'espacement) -- la version initiale (4 balises, trou volontaire de 8m
+# autour de x=10) etait plus clairsemee que la realite du projet, ce qui
+# faisait deriver l'incertitude meme sans perte de balise (cf. Jour 6 de
+# TINO_WORKFLOW.md). Corrige : balise ajoutee pres de la zone de l'obstacle.
 LANDMARKS = [
     {"id": 0, "x": 2.0, "y": 7.5},
     {"id": 1, "x": 6.0, "y": 7.5},
-    {"id": 2, "x": 14.0, "y": 7.5},
-    {"id": 3, "x": 18.0, "y": 7.5},
-    # Pas de balise en x=10 (zone de l'obstacle imprevu) : c'est
-    # deliberement une zone de couverture plus faible, cf. section "cas
-    # limite perte de balise" plus bas -- le detour du robot passe hors
-    # champ de x=10 pendant la replanification.
+    {"id": 2, "x": 10.0, "y": 9.5},  # pres de la zone de l'obstacle/detour, hors du couloir direct
+    {"id": 3, "x": 14.0, "y": 7.5},
+    {"id": 4, "x": 18.0, "y": 7.5},
 ]
 
 # Meme geometrie que le cas limite "chemin le plus court" (obstacle avec
@@ -90,6 +88,7 @@ def executer_essai(planner_name="astar", perte_balise=False, duree_perte=3.0, ve
             `duree_perte` secondes a partir de l'apparition de l'obstacle
             imprevu -- reproduit le cas limite 3 du cahier des charges.
     """
+    random.seed(42 if planner_name == "astar" else 43)  # reproductibilite (Odometry utilise random.gauss)
     dt = config.DT
     robot = Robot(initial_pose=(START[0], START[1], 0.0))
     odometry = Odometry(robot)

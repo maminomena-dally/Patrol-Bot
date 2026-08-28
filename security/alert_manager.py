@@ -17,6 +17,8 @@ Interface avec SafetyManager (Tino, Role 5) :
 from enum import Enum
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple
+
+import config
 from security.intrusion_detector import IntrusionAlert
 
 
@@ -77,7 +79,7 @@ class AlertManager:
         self,
         warning_distance: float = 4.0,
         danger_distance: float = 2.0,
-        resolution_delay: float = 1.0,
+        resolution_delay: float = config.ALERT_RESOLUTION_DELAY,
     ):
         """
         Args:

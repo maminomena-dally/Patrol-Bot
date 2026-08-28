@@ -12,11 +12,5 @@ Verification de coherence :
 Transitions de niveau d'alerte :
   t=0.00s  distance_intrus=6.00m  -> niveau=nominal
   t=2.20s  distance_intrus=4.99m  -> niveau=info
-  t=3.20s  distance_intrus=4.53m  -> niveau=nominal
-  t=4.20s  distance_intrus=4.07m  -> niveau=info
-  t=5.20s  distance_intrus=3.61m  -> niveau=nominal
   t=6.20s  distance_intrus=3.15m  -> niveau=warning
-  t=7.20s  distance_intrus=2.69m  -> niveau=nominal
-  t=8.20s  distance_intrus=2.23m  -> niveau=warning
-  t=9.20s  distance_intrus=1.77m  -> niveau=nominal
   t=10.20s  distance_intrus=1.31m  -> niveau=danger
