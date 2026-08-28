@@ -1,3 +1,47 @@
+"""
+safety/safety_manager.py — Arrêt sûr, mode dégradé et supervision (Rôle Sûreté — Tino).
+
+Surveille en continu l'état du système et déclenche robot.emergency_stop()
+quand une situation critique est détectée (section 16 du cahier des charges) :
+
+    Situation                          -> Action
+    --------------------------------------------------------------
+    Obstacle proche                    -> ralentir / évitement (planning, pas ici)
+    Obstacle bloquant le chemin         -> replanifier (planning, pas ici)
+    Aucun chemin valide                 -> arrêt sûr
+    Localisation trop incertaine        -> arrêt sûr
+    Capteur critique indisponible       -> mode dégradé (arrêt par prudence)
+    Intrusion confirmée (INFO/WARNING)  -> surveillance (ALERTE), pas d'arrêt
+    Intrusion confirmée (DANGER)        -> arrêt d'urgence
+    Perte de supervision                -> continuer ou arrêt selon politique
+
+Ce module ne pilote jamais le robot directement en dehors de
+`robot.emergency_stop()` / `robot.resume()` : le ralentissement/évitement et
+la replanification restent la responsabilité de planning/ et control/.
+L'alarme sonore et la classification des intrusions restent la
+responsabilité de security/ (Speaker, AlertManager).
+
+Chaîne complète attendue (security/ implémenté par Koja) :
+
+    IntrusionDetector.check(targets, t) -> (confirmed, alerts)
+    AlertManager.update(alerts, t)      -> AlertEvent
+        am.get_intrusion_confirmed()    -> intrusion_confirmed (ci-dessous)
+        am.is_danger()                  -> intrusion_danger (ci-dessous)
+    Speaker.update(am.should_alarm(), t)  -> alarme sonore (independant)
+
+SafetyManager.check() est un consommateur PASSIF de ces informations : il
+les REÇOIT en paramètres (comme localization_uncertainty ou obstacle_distance),
+il ne va JAMAIS interroger ou notifier security/ lui-même. C'est à
+l'appelant (boucle d'intégration, cf. main.py) de lire am.get_intrusion_confirmed()
+et am.is_danger() puis de les passer à check().
+
+Interface (branchée via `sim.on_safety` dans simulation/simulator.py) :
+
+    safety_manager.check(robot, localization_uncertainty=None,
+                          obstacle_distance=None, path_found=True,
+                          intrusion_confirmed=False, intrusion_danger=False)
+"""
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
@@ -46,6 +90,7 @@ class SafetyManager:
         obstacle_distance: float | None = None,
         path_found: bool = True,
         intrusion_confirmed: bool = False,
+        intrusion_danger: bool = False,
     ) -> EtatSurete:
         """
         À appeler à CHAQUE pas de la boucle de simulation.
@@ -58,10 +103,13 @@ class SafetyManager:
                 d'un capteur (ex: sensors/lidar.py, une fois disponible)
             path_found: False si le planificateur n'a pas trouvé de chemin
                 (ex: `AStarPlanner.plan()` a retourné `[]`)
-            intrusion_confirmed: True si security/intrusion_detector.py a
-                confirmé une intrusion (déclenche l'alerte, pas l'arrêt du
-                robot en soi -- une patrouille de sécurité doit pouvoir
-                continuer à surveiller après une intrusion confirmée)
+            intrusion_confirmed: True si security/alert_manager.py.AlertManager
+                .get_intrusion_confirmed() est vrai (intrusion detectee,
+                niveau INFO ou WARNING) -> surveillance renforcee (ALERTE),
+                sans arreter le robot.
+            intrusion_danger: True si AlertManager.is_danger() est vrai
+                (intrusion critique, niveau DANGER) -> arret d'urgence,
+                comme documente dans security/alert_manager.py.
 
         Returns:
             L'état de sûreté courant.
@@ -97,12 +145,24 @@ class SafetyManager:
         if echec_chemin_persistant:
             self.etat = EtatSurete.ARRET_SUR
             raison = "aucun_chemin_valide"
+        elif intrusion_danger:
+            # Intrusion confirmee au niveau DANGER (security.AlertManager.is_danger())
+            # : arret d'urgence, comme documente dans security/alert_manager.py
+            # ("Interface avec SafetyManager : am.is_danger() -> bool (arret urgence)").
+            self.etat = EtatSurete.ARRET_SUR
+            raison = "intrusion_danger"
         elif localisation_incertaine:
             self.etat = EtatSurete.ARRET_SUR
             raison = "localisation_trop_incertaine"
         elif capteur_indisponible:
             self.etat = EtatSurete.ARRET_SUR
             raison = "capteur_critique_indisponible"
+        elif intrusion_confirmed:
+            # Intrusion detectee mais pas encore critique (INFO/WARNING) :
+            # on reste vigilant sans arreter le robot -- Speaker/AlertManager
+            # gerent l'alarme sonore independamment (security/speaker.py).
+            self.etat = EtatSurete.ALERTE
+            raison = "intrusion_surveillee"
         elif not path_found:
             # échec isolé, pas encore persistant : on tolère (replanification
             # en cours côté planning), on journalise en ALERTE
@@ -114,10 +174,6 @@ class SafetyManager:
         # -- Application de la décision sur le robot --
         if self.etat == EtatSurete.ARRET_SUR:
             robot.emergency_stop()
-
-        # -- Intrusion confirmée : alerte, indépendante de l'arrêt du robot --
-        if intrusion_confirmed:
-            self._declencher_alerte(robot, t)
 
         # -- Journalisation des transitions --
         if self.etat != ancien_etat:
@@ -131,16 +187,6 @@ class SafetyManager:
             ))
 
         return self.etat
-
-    def _declencher_alerte(self, robot, t: float):
-        """
-        Relaie une intrusion confirmée vers security/alert_manager.py si
-        disponible (voir robot.security["alert_manager"]), sans bloquer si
-        ce module n'est pas encore branché.
-        """
-        alert_manager = robot.security.get("alert_manager") if hasattr(robot, "security") else None
-        if alert_manager is not None and hasattr(alert_manager, "notify"):
-            alert_manager.notify(robot, confidence=1.0)
 
     def resume_si_possible(self, robot):
         """

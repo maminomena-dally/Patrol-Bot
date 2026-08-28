@@ -30,6 +30,10 @@ from experiments.run_experiments import (
 )
 from safety.safety_manager import SafetyManager, EtatSurete
 from sensors.lidar import LidarSensor
+from sensors.odometry import Odometry
+from sensors.landmarks import LandmarkDetector
+from localization.localization import Localizer
+from experiments.campagne_localisation import LANDMARKS
 
 
 # Reprend exactement la geometrie du cas limite "couloir bloque"
@@ -56,6 +60,9 @@ def rejouer_avec_surete(planner_name="astar", verbose=True):
     controller = PurePursuitController()
     sm = SafetyManager(tentatives_max_replanification=3)
     lidar = LidarSensor(robot, obstacles=INITIAL_OBSTACLES)  # LIAISON : vrai capteur
+    odometry = Odometry(robot)
+    landmarks_detector = LandmarkDetector(robot, LANDMARKS)  # memes balises que campagne_localisation.py
+    localizer = Localizer(initial_pose=(START[0], START[1], 0.0))  # LIAISON : vraie localisation
 
     grid = create_test_grid(config.WORLD_WIDTH, config.WORLD_HEIGHT,
                              config.GRID_RESOLUTION, INITIAL_OBSTACLES)
@@ -71,6 +78,12 @@ def rejouer_avec_surete(planner_name="astar", verbose=True):
     max_steps = int(30.0 / dt)  # 30s de marge, largement suffisant pour ce cas
     for _ in range(max_steps):
         px, py, pth = robot.get_true_pose()
+
+        # -- Localisation reelle : predict (odometrie) + correct (balises) --
+        d_left, d_right = odometry.read(dt)
+        localizer.predict(d_left, d_right)
+        detections = landmarks_detector.detect()
+        localizer.correct(detections)
 
         # -- L'obstacle imprevu apparait (une seule fois) --
         if robot.time >= OBSTACLE_TIME and not obstacle_apparu:
@@ -99,7 +112,7 @@ def rejouer_avec_surete(planner_name="astar", verbose=True):
             path_found = True  # rien a signaler avant l'obstacle
 
         # -- SafetyManager verifie la situation a CE pas --
-        etat = sm.check(robot, localization_uncertainty=0.05,
+        etat = sm.check(robot, localization_uncertainty=localizer.uncertainty,
                          obstacle_distance=lidar.min_distance(), path_found=path_found)
         historique_surete.append((robot.time, px, py, etat.name))
 
