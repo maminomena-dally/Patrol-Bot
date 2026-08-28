@@ -179,6 +179,7 @@ class _IntegrationLoop:
             obstacle_distance=self.obstacle_distance,
             path_found=self.path_found,
             intrusion_confirmed=self.alert_manager.get_intrusion_confirmed(),
+            intrusion_danger=self.alert_manager.is_danger(),
         )
         if etat == EtatSurete.ARRET_SUR and not self.metrics["safety_triggered"]:
             self.metrics["safety_triggered"] = True
