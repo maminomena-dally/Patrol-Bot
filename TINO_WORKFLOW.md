@@ -1,7 +1,7 @@
 🎯 Role 5 — Experimentation, Surete et Qualite : Suivi de travail
 Tino — M2 SDIA
-> **Derniere mise a jour** : Phase 5 quasi-terminee (recalibration localisation + intrusion faite, intrusion_danger corrige dans l'integration finale de dally)
-> **Statut global** : 🟢 Role complet — plus aucune tache de code en attente
+> **Derniere mise a jour** : Phase 5 TERMINEE (recalibration localisation + intrusion faite, integration finale de dally verifiee et corrigee, rapport final redige — sections 5 et 6, PDF)
+> **Statut global** : ✅ Role complet — code ET rapport, plus aucune case ouverte dans cette checklist
 > **Branche** : `feature/surete-experimentation`
 > **Sources lues** :
 > - ✅ Cadrage_Mini_Projet_Robotique_Mobile.pdf
@@ -56,12 +56,12 @@ Phase 5 — Integration finale & rapport ⏸ EN COURS
 [x] Script de demonstration visuelle (`experiments/demo_safety.py`) : rejoue le cas limite "couloir bloque" avec `SafetyManager.check()` appele reellement a chaque pas, produit un graphique montrant la trajectoire coloree par etat de surete + le point exact d'`ARRET_SUR` (`results/features_experimentation/images/safety_arret_sur_*.png`)
 [x] Distance minimale aux obstacles sur les essais de replanification (etendu depuis la version de Koja, qui ne la calculait que cote patrouille) — `min_obstacle_dist` disponible sur chaque essai + agregee (min global) dans `resume_campagne.txt`
 [x] Interface Tkinter interactive (`gui/safety_app.py`) : pilotage manuel du robot + panneau de test du SafetyManager en direct (obstacle imprevu, incertitude, capteur indisponible, journal des transitions) — teste sans mainloop (tkinter indisponible dans l'environnement de dev), a confirmer par Tino en local
-[ ] Brancher reellement `sim.on_safety` dans la boucle d'integration finale (avec dally), avec les vraies valeurs de `localizer.uncertainty` et `planner.plan()` a chaque pas — pour l'instant le SafetyManager est teste isolement (tests unitaires + simulation dans la campagne), pas encore cable dans une boucle complete — en attente de dally
+[x] Brancher reellement `sim.on_safety` dans la boucle d'integration finale : FAIT PAR DALLY (`experiments/integration_finale.py`) — verifie et corrige (voir Jour 7 : ajout du parametre `intrusion_danger` manquant)
 [x] Cas limite 3 (perte de balise) : DEBLOQUE — `localization/localization.py`, `sensors/odometry.py`, `sensors/landmarks.py` sont en realite deja tous implementes (verifie sur le depot a jour), le blocage n'etait pas reel. Teste dans `experiments/campagne_localisation.py`
 [x] Erreur de localisation (metrique du cahier des charges) : DEBLOQUE — calculee reellement dans `experiments/campagne_localisation.py` (Odometry + LandmarkDetector + Localizer branches, pas simules), voir `results/features_experimentation/resume_localisation.txt`
-[ ] Rediger la section 4/5 du rapport (methodologie de la campagne, resultats, analyse des cas limites, limites connues)
+[x] Rediger les sections 5/6 du rapport (methodologie de la campagne, resultats, analyse des cas limites, limites connues) — PDF : `Rapport_Sections_5_6_Tino.pdf` (protocole des 5 campagnes, resultats chiffres, 4 incidents diagnostiques/corriges, mecanisme de surete, limites connues, tableau des contributions)
 [x] `sensors/lidar.py` et `sensors/cameras.py` : DEBLOQUE — ces 2 capteurs sont tombes sur ce role (sans responsable depuis le depart de Kojy). Implementes, testes (9 tests), et branches reellement (obstacle_distance vient desormais du lidar, plus une valeur simulee) dans demo_safety.py, campagne_localisation.py et gui/safety_app.py
-[ ] Brancher reellement `sim.on_safety` dans la boucle d'integration finale (avec dally) — en attente de dally (seule tache de code encore bloquee de ce role)
+[x] Brancher reellement `sim.on_safety` dans la boucle d'integration finale : FAIT (doublon de la ligne ci-dessus)
 Constat de calibration RESOLU (Jour 7, voir plus bas) : les balises de mon propre scenario de test etaient trop clairsemees (4, trou volontaire de 8m) comparees a la realite du projet (`WAREHOUSE_LANDMARKS`, 9 balises espacees de 7-8m). Corrige dans `experiments/campagne_localisation.py` uniquement (pas de changement partage) : desormais `NOMINAL` sur tous les cas, sauf perte de balise prolongee (>=10s), qui declenche bien `ARRET_SUR` comme attendu. `LOCALIZATION_PROCESS_NOISE` (partage, config.py) n'a PAS ete touche : deja bon pour le vrai scenario (`integration_finale.py` reussit sans souci, confirme par dally via `LANDMARK_DETECTION_RADIUS` passe de 2.0 a 6.0 avant meme cette investigation)
 Historique des commits
 Date	Commit	Fichiers	Tests
@@ -109,6 +109,10 @@ Fait : (1) Trouve que `experiments/integration_finale.py` (nouveau fichier de da
 Bloquants : Aucun
 Decisions : Ne pas toucher `LOCALIZATION_PROCESS_NOISE` (config partagee, deja bonne) -- corriger la densite des balises dans mon propre fichier de test uniquement, zero risque de regression sur le travail des autres. Pour l'intrusion, centraliser dans `config.py` plutot que changer les defauts codes en dur de Koja directement, pour rester coherent avec le reste du projet (localisation deja centralisee ainsi) et permettre un ajustement futur en un seul endroit.
 Ajoute `random.seed()` dans `campagne_localisation.py` (manquant, resultats non reproductibles d'une execution a l'autre a cause du bruit d'odometrie non-seede)
+Jour 8 — Redaction du rapport final (sections 5 et 6)
+Fait : Redaction complete des sections 5 (Protocole experimental, resultats et incidents) et 6 (Surete, limites connues et contributions) du rapport final du groupe, sous forme de PDF (`Rapport_Sections_5_6_Tino.pdf`). Contenu : methodologie des 5 campagnes, resultats chiffres de chacune (tableaux), les 4 incidents reels diagnostiques et corriges au fil du projet (avec constat/diagnostic/correction pour chacun), explication du mecanisme de surete, 4 limites connues assumees honnetement, tableau recapitulatif des livrables du role.
+Bloquants : Aucun
+Decisions : Presenter l'echec de la patrouille A* dans l'integration finale (4/7 points, ARRET_SUR) comme un incident revelateur plutot que de le cacher -- illustre que le mecanisme de surete fonctionne correctement meme quand la planification echoue reellement, conforme au critere de reussite du cahier des charges
 Interface publique de mes modules
 SafetyManager
 ```python
@@ -184,3 +188,4 @@ Fichier	Role	Description
 `security/intrusion_detector.py`, `security/alert_manager.py`	Modifie (recalibration)	Defauts branches sur config.py au lieu de valeurs en dur
 `results/features_experimentation/`	Nouveau	Resultats agreges (CSV + resume texte, campagnes essais + localisation)
 `TINO_WORKFLOW.md`	Nouveau (ex ROLE5_WORKFLOW.md)	Ce fichier
+`Rapport_Sections_5_6_Tino.pdf`	Nouveau	Sections 5 et 6 du rapport final (protocole, resultats, incidents, surete, limites, contributions)
