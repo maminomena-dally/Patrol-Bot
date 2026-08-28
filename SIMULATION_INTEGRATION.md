@@ -62,7 +62,7 @@ utilise les vraies signatures, vérifiées en lisant le code source.
   pendant ce travail — les lignes de commandes shell ont disparu du
   fichier avant que cette correction soit nécessaire de mon côté.
 
-Après ces corrections : **118 tests passent** (`pytest tests/ -q`), zéro
+Après ces corrections : **120 tests passent** (`pytest tests/ -q`), zéro
 régression.
 
 ## 4. La boucle d'intégration finale
@@ -112,8 +112,10 @@ on_safety    -> SafetyManager.check(robot,
                     localization_uncertainty=localizer.uncertainty,
                     obstacle_distance=...,
                     path_found=...,
-                    intrusion_confirmed=alert_manager.get_intrusion_confirmed())
-                -> si ARRET_SUR : robot.emergency_stop() (interne à SafetyManager)
+                    intrusion_confirmed=alert_manager.get_intrusion_confirmed(),
+                    intrusion_danger=alert_manager.is_danger())
+                -> intrusion_confirmed (INFO/WARNING) -> ALERTE, surveillance renforcée
+                -> intrusion_danger (DANGER) ou ARRET_SUR sinon -> robot.emergency_stop()
 command_fn   -> PurePursuitController.compute_command(pose=pose ESTIMÉE, path=...)
                 Robot.set_velocity(v, omega)
              -> Robot.step(dt)
@@ -154,7 +156,7 @@ planification et la commande utilisent `localizer.estimated_pose`, jamais
 droit de lire la vérité terrain (c'est un capteur simulé, comme les
 caméras dont il se sert en interne).
 
-### 4.3 Intrusions simulées
+### 4.5 Intrusions simulées
 
 Le projet étant hors ligne, les intrus sont des positions `(x, y)`
 injectées à des instants fixés (`INTRUDER_SCHEDULE` dans
@@ -166,14 +168,39 @@ dans leur champ de vision réel à ce pas de temps — donc la détection
 dépend de l'orientation du robot au moment où l'intrus apparaît, pas
 d'une distance seule.
 
+### 4.6 Interface graphique live (`gui/auto_patrol.py`)
+
+Aucune interface du projet ne montrait le pilotage **autonome** en direct
+avant ce travail : `gui/app.py` et `gui/safety_app.py` ne font que du
+pilotage manuel, `experiments/integration_finale.py` tourne en boucle
+fermée sans fenêtre. `gui/auto_patrol.py` réutilise directement
+`_IntegrationLoop` et `simulation.Simulator` d'`integration_finale.py`
+(aucune logique dupliquée) mais exécute **un seul pas de simulation par
+frame d'animation Tkinter** (`sim.run(duration=config.DT, ...)` appelé à
+chaque tick de `.after()`) au lieu d'exécuter toute la simulation d'un
+coup en tâche de fond : le robot patrouille réellement sous les yeux de
+l'utilisateur, avec la carte, la pose vraie, la pose estimée EKF, et un
+panneau d'état (waypoints, incertitude, sûreté, alertes) qui se met à
+jour à chaque pas.
+
 ## 5. Guide d'utilisation / test
 
 ```bash
-# Suite de tests complète (118 tests)
-venv/Scripts/python.exe -m pytest tests/ -q
+# Suite de tests complète
+venv/Scripts/python.exe -m pytest tests/ -q                        # 120 tests
 
-# Boucle d'intégration finale (A* puis RRT sur la carte entrepôt, via Simulator)
+# Boucle d'intégration finale (A* puis RRT, via Simulator) — CSV + PNG
 venv/Scripts/python.exe -m experiments.integration_finale
+
+# Interface graphique live (pilotage automatique en temps réel)
+venv/Scripts/python.exe -m gui.auto_patrol
+venv/Scripts/python.exe -m gui.auto_patrol --planner rrt
+
+# Rejeu animé d'un log déjà enregistré
+venv/Scripts/python.exe -m gui.replay results/features_integration_finale/logs/patrol_astar.csv --speed 8
+
+# Campagne conforme au sujet : 10 essais nominaux + 3 cas limites, x2 algos
+venv/Scripts/python.exe -m experiments.campagne_complete
 ```
 
 > Le `venv` du projet contient `numpy` (nécessaire à `planning/astar.py`)
@@ -210,6 +237,38 @@ fois dans la marge de sécurité gonflée autour du mur de la zone réservée
 `ARRET_SUR` à raison. C'est reproductible avec ce code exact, mais
 sensible au moindre décalage de timing — voir la limite correspondante en
 section 7.
+
+### 5.1 Campagne conforme au sujet (`experiments/campagne_complete.py`)
+
+Le sujet du mini-projet exige explicitement : *"Évaluer sur au moins 10
+essais et 3 cas limites : taux de succès, temps, longueur de trajet,
+distance minimale aux obstacles et une mesure de localisation."* Aucun
+script existant ne réunissait ces 5 métriques sur les mêmes essais
+(`campagne_essais.py` : 10 nominaux + 2 cas limites, vérité terrain, pas
+de mesure de localisation ; `campagne_localisation.py` : mesure la
+localisation mais seulement 4 essais fixes). `campagne_complete.py`
+réutilise les briques des deux (génération des essais, géométrie du
+corridor + balises déjà calibrées) et branche la boucle complète
+(EKF + planification + sûreté) sur les **10 essais nominaux + 3 cas
+limites** (dont `cas_limite_perte_balise`, réactivé — il était marqué
+« non implémentable » alors que le module de localisation est
+fonctionnel depuis longtemps).
+
+**Résultats réels obtenus** (13 essais × 2 algos, seed fixe) :
+
+| | A* | RRT |
+|---|---|---|
+| Taux de succès | 92% (12/13) | 92% (12/13) |
+| Temps de mission moyen | 67.5 s | 68.9 s |
+| Longueur de trajet moyenne | 32.9 m | 33.3 m |
+| Erreur de localisation moyenne | 0.025 m | 0.028 m |
+| Arrêts sûrs attendus/confirmés | 1/1 | 1/1 |
+
+Le seul échec dans les deux cas est `cas_limite_couloir_bloque` (aucun
+détour n'existe physiquement — le `SafetyManager` déclenche l'arrêt sûr
+comme attendu, ce n'est pas un défaut du système). Résultats sauvegardés
+dans `results/features_experimentation/campagne_complete.csv` et
+`resume_campagne_complete.txt`.
 
 ## 6. Paramètres de réglage
 
@@ -260,4 +319,13 @@ En plus de ceux déjà documentés par les autres rôles (`config.py`) :
   marge que le planificateur (`obstacle_tolerance` par défaut 0.5m contre
   l'inflation `robot_radius` d'A\*) — un intrus juste au bord d'un rack
   peut être classé différemment par les deux modules.
+- **`distance_min_obstacle_m` vaut 0.0 sur presque tous les essais
+  nominaux de `campagne_complete.py`.** Ce n'est pas une collision : la
+  métrique (`_min_dist_to_rects`, héritée de `run_experiments.py`)
+  soustrait `config.ROBOT_RADIUS` à la distance brute — donc 0.0 signifie
+  que le **bord** du robot est arrivé exactement à la limite de la marge
+  de sécurité gonflée autour d'un obstacle par le planificateur, pas qu'il
+  l'a traversée. Comportement déjà présent dans les campagnes de Koja
+  avant ce travail (même résultat observé sur `scenario_patrouille`),
+  pas introduit ici.
 
